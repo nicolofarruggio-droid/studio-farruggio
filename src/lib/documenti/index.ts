@@ -1,6 +1,7 @@
 import 'server-only'
 import { supabaseServizio } from '@/lib/supabase/server'
 import { limiteByte, PERCORSO_VALIDO, tipoPerAnteprima } from './regole'
+import { scriviFileLocale } from './locale'
 import { linkCaricamentoLocale, linkScaricamentoLocale, type ModoLink } from './link-locali'
 import { cartellaFileLocali, infoFileLocale } from './locale'
 import type { Destinazione } from './tipi'
@@ -90,4 +91,19 @@ export async function eliminaOggetti(percorsi: string[]): Promise<void> {
     const { error } = await supabaseServizio().storage.from(bucket()).remove(validi.slice(i, i + 100))
     if (error) throw new Error(`Spazio file non raggiungibile: ${error.message}`)
   }
+}
+
+/**
+ * Carica un file dal server (usato dall'API per agenti, con file piccoli). L'interfaccia invece fa
+ * caricare i file direttamente dal browser. Da chiamare solo dopo il controllo dei permessi.
+ */
+export async function salvaOggetto(percorso: string, dati: Uint8Array, tipo: string): Promise<void> {
+  controlla(percorso)
+  if (driver() === 'locale') {
+    await scriviFileLocale(cartellaFileLocali(), percorso, new Blob([dati as BlobPart]).stream(), dati.byteLength)
+    return
+  }
+  const { error } = await supabaseServizio().storage.from(bucket())
+    .upload(percorso, dati, { contentType: tipoPerAnteprima(tipo), upsert: false })
+  if (error) throw new Error(`Spazio file non raggiungibile: ${error.message}`)
 }
