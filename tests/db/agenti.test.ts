@@ -102,3 +102,34 @@ describe('agente con permessi di scrittura', () => {
     expect(Object.keys(r[0].permessi_agente).sort()).toEqual(Object.keys(tuttiIPermessi).sort())
   })
 })
+
+describe('un agente non ha poteri da creatore sui compiti che crea', () => {
+  it('con il solo permesso "crea compiti" non chiude, annulla, modifica, rimanda né commenta', async () => {
+    await permessi({ crea_compiti: 'si' })
+    const id = await creaCompito(db, agente, A.c1.id, null, 'Creato da agente')
+    const prova = (sql: string, params: unknown[]) => come(db, agente, (tx) => tx.query(sql, params))
+    await expect(prova(`select public.cambia_stato_compito($1, 'annullato', 'x')`, [id])).rejects.toThrow()
+    await expect(prova(`select public.cambia_stato_compito($1, 'completato')`, [id])).rejects.toThrow()
+    await expect(prova(`select public.cambia_stato_compito($1, 'in_lavorazione')`, [id])).rejects.toThrow()
+    await expect(prova(`select public.modifica_compito($1, 'nuovo', '', null, null, false, 'urgente')`, [id])).rejects.toThrow()
+    await expect(prova(`select public.riassegna_compito($1, $2::uuid[])`, [id, [A.c2.id]])).rejects.toThrow()
+    await expect(prova(`select public.aggiungi_commento($1, 'promemoria')`, [id])).rejects.toThrow()
+    const stato = await righe<{ stato: string; titolo: string }>(db, 'select stato, titolo from public.compiti where id = $1', [id])
+    expect(stato[0]).toEqual({ stato: 'assegnato', titolo: 'Creato da agente' })
+  })
+
+  it('con "aggiorna compiti" e "commenta" abilitati può farlo', async () => {
+    await permessi({ crea_compiti: 'si', aggiorna_compiti: 'si', commenta: 'si' })
+    const id = await creaCompito(db, agente, A.c1.id, null, 'Creato da agente')
+    await come(db, agente, (tx) => tx.query(`select public.aggiungi_commento($1, 'promemoria')`, [id]))
+    await come(db, agente, (tx) => tx.query(`select public.cambia_stato_compito($1, 'annullato', 'creato per errore')`, [id]))
+    const stato = await righe<{ stato: string }>(db, 'select stato from public.compiti where id = $1', [id])
+    expect(stato[0].stato).toBe('annullato')
+  })
+
+  it('una persona che crea un compito lo controlla come sempre', async () => {
+    await db.query(`update public.studi set creazione_compiti = 'tutti' where id = $1`, [A.id])
+    const id = await creaCompito(db, A.c1, A.c2.id, null)
+    await come(db, A.c1, (tx) => tx.query(`select public.cambia_stato_compito($1, 'annullato', 'non serve più')`, [id]))
+  })
+})

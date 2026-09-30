@@ -125,7 +125,7 @@ describe('accessi tra colleghi', () => {
 
 describe('azioni riservate agli admin', () => {
   const azioniAdmin: [string, (s: Studio) => [string, unknown[]]][] = [
-    ['invitare', (s) => [`select public.crea_invito('nuovo@esempio.it', 'Nuovo', 'Utente', 'collaboratore', 'h1')`, []]],
+    ['invitare', () => [`select public.crea_invito('nuovo@esempio.it', 'Nuovo', 'Utente', 'collaboratore', 'h1')`, []]],
     ['cambiare ruolo', (s) => [`select public.cambia_ruolo_utente($1, 'admin')`, [s.c1.id]]],
     ['disattivare utenti', (s) => [`select public.imposta_utente_attivo($1, false)`, [s.c2.id]]],
     ['assegnare clienti', (s) => [`select public.assegna_referente($1::uuid[], $2)`, [[s.clienti[2].id], s.c1.id]]],

@@ -15,7 +15,8 @@
     "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "locale:avvia": "bash scripts/locale/avvia.sh",
     "locale:reset": "bash scripts/locale/avvia.sh --reset && npm run seed",
-    "locale:ferma": "bash scripts/locale/ferma.sh"
+    "locale:ferma": "bash scripts/locale/ferma.sh",
+    "openapi": "tsx scripts/openapi.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",

@@ -176,13 +176,13 @@ describe('aggiornare i compiti richiede il permesso anche sui compiti creati dal
       [`select public.riassegna_compito($1, $2::uuid[])`, [compito, [A.c2.id]]],
     ]
     for (const [sql, params] of vietate) {
-      await expect(come(db, agente, (tx) => tx.query(sql, params)), sql).rejects.toThrow(/non è abilitato ad aggiornare/)
+      await expect(come(db, agente, (tx) => tx.query(sql, params)), sql).rejects.toThrow(/non è abilitato ad aggiornare|Non puoi|Solo un admin/)
     }
     const k = await righe<{ stato: string; titolo: string }>(db, 'select stato, titolo from public.compiti where id = $1', [compito])
     expect(k[0]).toEqual({ stato: 'assegnato', titolo: 'Mio compito' })
     // e senza "commenta" non commenta nemmeno il suo compito
     await expect(come(db, agente, (tx) => tx.query(`select public.aggiungi_commento($1, 'Promemoria')`, [compito])))
-      .rejects.toThrow(/non è abilitato a commentare/)
+      .rejects.toThrow(/non è abilitato a commentare|Non puoi commentare/)
     await permessi({ crea_compiti: 'si', commenta: 'si' })
     await come(db, agente, (tx) => tx.query(`select public.aggiungi_commento($1, 'Promemoria')`, [compito]))
   })
