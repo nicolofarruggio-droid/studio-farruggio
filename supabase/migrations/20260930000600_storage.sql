@@ -4,6 +4,13 @@
 -- seconda difesa: impediscono comunque l'accesso incrociato tra studi.
 -- Eseguita solo dove esiste lo schema storage (Supabase); in locale e nei test viene saltata.
 
+-- Conversione sicura di una parte del percorso in uuid: un percorso malformato dà null (quindi nessun permesso),
+-- non un errore che bloccherebbe la lettura di tutta la tabella.
+create or replace function public.testo_a_uuid(p text) returns uuid
+language sql immutable as $$
+  select case when p ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then p::uuid end
+$$;
+
 do $$
 begin
   if not exists (select 1 from information_schema.tables where table_schema = 'storage' and table_name = 'objects') then
@@ -22,7 +29,7 @@ begin
       bucket_id = 'documenti'
       and (storage.foldername(name))[1] = public.mio_studio()::text
       and (storage.foldername(name))[2] = 'compiti'
-      and public.puo_vedere_compito(((storage.foldername(name))[3])::uuid)
+      and public.puo_vedere_compito(public.testo_a_uuid((storage.foldername(name))[3]))
     )
   $p$;
 
@@ -33,8 +40,8 @@ begin
       bucket_id = 'documenti'
       and (storage.foldername(name))[1] = public.mio_studio()::text
       and (storage.foldername(name))[2] = 'compiti'
-      and (public.puo_lavorare_compito(((storage.foldername(name))[3])::uuid)
-           or public.puo_controllare_compito(((storage.foldername(name))[3])::uuid))
+      and (public.puo_lavorare_compito(public.testo_a_uuid((storage.foldername(name))[3]))
+           or public.puo_controllare_compito(public.testo_a_uuid((storage.foldername(name))[3])))
     )
   $p$;
   -- Nessuna policy di update o delete: i documenti non si modificano né si eliminano.
