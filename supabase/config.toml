@@ -1,0 +1,55 @@
+# Configurazione per lo sviluppo locale con la Supabase CLI (`npx supabase start`, richiede Docker).
+# In produzione le stesse impostazioni si fanno nel pannello di Supabase (progetto in regione UE, Francoforte).
+project_id = "bigbrotherstudio"
+
+[api]
+port = 54321
+schemas = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 16
+
+[studio]
+port = 54323
+
+[inbucket]
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "25MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/**", "http://127.0.0.1:3000/**"]
+jwt_expiry = 3600
+enable_signup = true
+minimum_password_length = 10
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true
+
+[auth.email.template.confirmation]
+subject = "Conferma il tuo indirizzo email"
+content_path = "./supabase/templates/conferma.html"
+
+[auth.email.template.recovery]
+subject = "Scegli una nuova password"
+content_path = "./supabase/templates/recupero.html"
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+# "Accedi con Google": servono GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET nell'ambiente.
+[auth.external.google]
+# mettere true dopo aver impostato le variabili
+enabled = false
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+skip_nonce_check = false

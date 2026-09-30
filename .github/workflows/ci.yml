@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verifiche:
+    name: Lint, tipi, test di isolamento e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      # test unitari e di isolamento tra studi / permessi per ruolo su Postgres in memoria (PGlite)
+      - run: npm test
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: chiave-finta-per-la-build
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+  e2e:
+    name: Test end-to-end (Postgres + GoTrue + Mailpit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: verifiche
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      GOTRUE_BIN: ${{ github.workspace }}/.strumenti/auth
+      MAILPIT_BIN: ${{ github.workspace }}/.strumenti/mailpit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Strumenti locali (GoTrue di Supabase e Mailpit)
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          mkdir -p .strumenti && cd .strumenti
+          curl -sSL https://github.com/supabase/auth/releases/download/v2.180.0/auth-v2.180.0-x86.tar.gz | tar xz
+          curl -sSL https://github.com/axllent/mailpit/releases/latest/download/mailpit-linux-amd64.tar.gz | tar xz mailpit
+      - name: Stack locale e dati di esempio
+        run: |
+          bash scripts/locale/avvia.sh --reset
+          bash scripts/locale/env-ci.sh > .env.local
+          npm run seed
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: rapporto-playwright
+          path: playwright-report
