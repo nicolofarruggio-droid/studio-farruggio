@@ -62,7 +62,8 @@ export const leggiSessione = cache(async (): Promise<Sessione | null> => {
   if (r && r.attivo && (!r.ultimo_accesso || Date.now() - new Date(r.ultimo_accesso).getTime() > 10 * 60_000)) {
     comeSistema((sql) => sql`update public.utenti set ultimo_accesso = now() where id = ${user.id}`).catch(() => {})
   }
-  const { studio, ultimo_accesso: _ultimo, ...utente } = r ?? ({} as never)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { studio, ultimo_accesso, ...utente } = r ?? ({} as never)
   return {
     persona,
     metadati: user.user_metadata ?? {},

@@ -40,7 +40,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
+    <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       <a href="#contenuto" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-card focus:px-3 focus:py-2">
         Vai al contenuto
       </a>

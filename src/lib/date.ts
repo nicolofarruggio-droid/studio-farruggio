@@ -74,6 +74,11 @@ export function eFineMese(iso: string): boolean {
   return fineMeseISO(a, m) === iso
 }
 
+/** "a luglio 2026", "ad agosto 2026": preposizione corretta davanti a vocale. */
+export function aMese(testo: string): string {
+  return /^[aeiou]/i.test(testo) ? `ad ${testo}` : `a ${testo}`
+}
+
 /** Testo leggibile di un indicatore: "agosto 2026" o, se non è fine mese, "15/08/2026". */
 export function descriviAggiornamento(iso: string): string {
   return eFineMese(iso) ? meseAnno(iso) : formattaData(iso)

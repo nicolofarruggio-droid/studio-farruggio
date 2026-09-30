@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox, Input, Label, Select } from '@/components/ui/campi'
 import { BadgeIndicatore, NOMI_INDICATORE } from '@/components/indicatore'
 import { aggiornaIndicatore } from '@/app/(app)/clienti/azioni-indicatori'
-import { fineMeseISO, meseAnno, oggiISO } from '@/lib/date'
+import { aMese, eFineMese, fineMeseISO, formattaData, meseAnno, oggiISO } from '@/lib/date'
 
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
 
@@ -54,7 +54,7 @@ export function IndicatoreRapido({
     avvia(async () => {
       const r = await aggiornaIndicatore({ cliente, tipo, data: dataScelta, nonApplicabile })
       if (r.ok) {
-        toast.success(`${nome} di ${nomeCliente}: ${nonApplicabile ? 'non applicabile' : dataScelta ? `aggiornata a ${meseAnno(dataScelta)}` : 'da impostare'}`)
+        toast.success(`${nome} di ${nomeCliente}: ${nonApplicabile ? 'non applicabile' : dataScelta ? `aggiornata ${eFineMese(dataScelta) ? aMese(meseAnno(dataScelta)) : `al ${formattaData(dataScelta)}`}` : 'da impostare'}`)
         setAperto(false)
       } else toast.error(r.errore)
     })
@@ -83,7 +83,7 @@ export function IndicatoreRapido({
         <div className="flex flex-wrap gap-2">
           {scorciatoie.map((s) => (
             <Button key={s} size="sm" variant="secondary" disabled={inCorso} onClick={() => salva(s, false)}>
-              Aggiornata a {meseAnno(s)}
+              Aggiornata {aMese(meseAnno(s))}
             </Button>
           ))}
         </div>

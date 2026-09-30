@@ -15,3 +15,17 @@ describe('nome di visualizzazione del cliente', () => {
     expect(nomeUnico("Auto Shop — Enzo D'Agosta", usati)).toBe("Auto Shop — Enzo D'Agosta (3)")
   })
 })
+
+import { leggiImporto } from '@/lib/numeri'
+describe('importi', () => {
+  it('formati italiani e non', () => {
+    expect(leggiImporto('1.250.000 €')).toBe(1250000)
+    expect(leggiImporto('1.250.000,00')).toBe(1250000)
+    expect(leggiImporto('1250000,5')).toBe(1250000.5)
+    expect(leggiImporto('1250000.5')).toBe(1250000.5)
+    expect(leggiImporto('45.000')).toBe(45000)
+    expect(leggiImporto('1 250 000')).toBe(1250000)
+    expect(leggiImporto('abc')).toBeNull()
+    expect(leggiImporto('')).toBeNull()
+  })
+})
