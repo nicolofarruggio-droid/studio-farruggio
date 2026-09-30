@@ -16,10 +16,5 @@
       "path": "/api/cron/pulizia",
       "schedule": "30 2 * * *"
     }
-  ],
-  "functions": {
-    "src/app/api/cron/email/route.ts": {
-      "maxDuration": 300
-    }
-  }
+  ]
 }
