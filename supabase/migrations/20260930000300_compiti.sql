@@ -173,7 +173,7 @@ $$;
 -- Clienti visibili solo perché c'è un compito che li riguarda (si vede il nome del cliente).
 create or replace function public.cliente_con_compito_visibile(p_cliente uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select public.cliente_dello_studio(p_cliente) and exists (
+  select exists (
     select 1 from public.compiti c
     where c.cliente_id = p_cliente
       and (c.creato_da = auth.uid()
@@ -184,7 +184,9 @@ $$;
 
 drop policy clienti_lettura on public.clienti;
 create policy clienti_lettura on public.clienti for select to authenticated
-  using (public.puo_vedere_cliente(id) or public.cliente_con_compito_visibile(id));
+  using (studio_id = (select public.mio_studio()) and eliminato_il is null
+         and ((select public.vede_tutto_lo_studio()) or public.cliente_assegnato_visibile(id)
+              or public.cliente_con_compito_visibile(id)));
 
 -- ---------------------------------------------------------------------------
 -- Operazioni sui compiti (tutte controllano i permessi: valgono per interfaccia e API)

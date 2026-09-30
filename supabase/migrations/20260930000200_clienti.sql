@@ -126,15 +126,19 @@ language sql stable security definer set search_path = '' as $$
                  where c.id = p_cliente and c.studio_id = public.mio_studio() and c.eliminato_il is null)
 $$;
 
+-- Cliente assegnato a me o a un collega del cui spazio ho accesso.
+create or replace function public.cliente_assegnato_visibile(p_cliente uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.assegnazioni a
+                 where a.cliente_id = p_cliente and a.al is null
+                   and a.utente_id in (select public.spazi_visibili()))
+$$;
+
 -- Vista completa del cliente (anagrafica, indicatori, comunicazioni, email).
 create or replace function public.puo_vedere_cliente(p_cliente uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select public.cliente_dello_studio(p_cliente) and (
-    public.vede_tutto_lo_studio()
-    or exists (select 1 from public.assegnazioni a
-               where a.cliente_id = p_cliente and a.al is null
-                 and a.utente_id in (select public.spazi_visibili()))
-  )
+  select public.cliente_dello_studio(p_cliente)
+     and (public.vede_tutto_lo_studio() or public.cliente_assegnato_visibile(p_cliente))
 $$;
 
 -- Lavoro sul cliente (indicatori, comunicazioni, indirizzi email).
@@ -382,9 +386,11 @@ alter table public.aggiornamenti_storico enable row level security;
 alter table public.comunicazioni enable row level security;
 
 -- La policy di lettura dei clienti è completata nella migrazione dei compiti
--- (chi ha un compito su un cliente ne vede il nome).
+-- (chi ha un compito su un cliente ne vede il nome). Usa le colonne della riga e non
+-- rilegge la tabella, così vale anche per "insert ... returning".
 create policy clienti_lettura on public.clienti for select to authenticated
-  using (public.puo_vedere_cliente(id));
+  using (studio_id = (select public.mio_studio()) and eliminato_il is null
+         and ((select public.vede_tutto_lo_studio()) or public.cliente_assegnato_visibile(id)));
 create policy clienti_inserimento_admin on public.clienti for insert to authenticated
   with check (studio_id = (select public.mio_studio()) and (select public.e_admin()));
 create policy clienti_modifica_admin on public.clienti for update to authenticated

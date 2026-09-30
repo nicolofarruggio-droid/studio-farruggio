@@ -25,8 +25,11 @@ describe('visibilità tra collaboratori', () => {
     expect(com.every((r) => suoi.includes(r.cliente_id))).toBe(true)
   })
 
-  it("l'admin vede tutti i clienti dello studio", async () => {
+  it("l'admin vede tutti i clienti dello studio e ne crea di nuovi (insert … returning)", async () => {
     expect(await clientiVisti(A.admin)).toHaveLength(6)
+    const r = await come(db, A.admin, (tx) => righe<{ id: string }>(tx,
+      `insert into public.clienti (studio_id, ragione_sociale, nome_visualizzazione) values ($1, 'Nuovo', 'Nuovo') returning id`, [A.id]))
+    expect(r).toHaveLength(1)
   })
 
   it("con 'tutto lo studio in sola lettura' vede tutto ma modifica solo i propri", async () => {
