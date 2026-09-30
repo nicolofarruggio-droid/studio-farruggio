@@ -26,7 +26,7 @@ export function Tessera({
       <span className="grid min-w-0">
         <span className="text-sm text-muted-foreground">{titolo}</span>
         <span className="text-2xl leading-tight font-semibold tabular-nums">{valore}</span>
-        {dettaglio && <span className="truncate text-xs text-muted-foreground">{dettaglio}</span>}
+        {dettaglio && <span className="text-xs text-muted-foreground">{dettaglio}</span>}
       </span>
     </>
   )
