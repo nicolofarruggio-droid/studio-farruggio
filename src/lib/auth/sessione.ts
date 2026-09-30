@@ -35,6 +35,8 @@ export type Sessione = {
   metadati: Record<string, unknown>
   utente: Utente | null
   studio: Studio | null
+  /** Verifica in due passaggi attiva ma non ancora fatta in questa sessione: serve il codice (/accedi/verifica). */
+  serveSecondoPassaggio: boolean
 }
 
 /** Utente autenticato (verificato con Supabase Auth) e il suo profilo nello studio. Una volta per richiesta. */
@@ -63,11 +65,16 @@ export const leggiSessione = cache(async (): Promise<Sessione | null> => {
     comeSistema((sql) => sql`update public.utenti set ultimo_accesso = now() where id = ${user.id}`).catch(() => {})
   }
   const { studio, ultimo_accesso: _ultimo, ...utente } = r ?? ({} as never)
+  // Verifica in due passaggi (sezione 5): il livello raggiunto viene dal token (già verificato da getUser);
+  // i fattori attivi dall'utente letto dal server, non dal cookie, che si potrebbe manomettere.
+  const { data: livello } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  const haFattori = (user.factors ?? []).some((f) => f.status === 'verified')
   return {
     persona,
     metadati: user.user_metadata ?? {},
     utente: r ? (utente as Utente) : null,
     studio: r ? studio : null,
+    serveSecondoPassaggio: livello?.currentLevel !== 'aal2' && (haFattori || livello?.nextLevel === 'aal2'),
   }
 })
 
@@ -79,6 +86,8 @@ export async function richiediUtente(): Promise<Contesto> {
   if (!s) redirect('/accedi')
   if (!s.utente || !s.studio) redirect('/completa-registrazione')
   if (!s.utente.attivo) redirect('/accesso-sospeso')
+  // verifica in due passaggi attiva: dopo la password serve il codice dell'app di autenticazione
+  if (s.serveSecondoPassaggio) redirect('/accedi/verifica')
   return { persona: s.persona, utente: s.utente, studio: s.studio }
 }
 
