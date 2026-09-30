@@ -45,8 +45,11 @@ export async function preparaDestinazione(percorso: string, tipo: string, maxByt
   return { driver: 'supabase', bucket: bucket(), percorso, token: data.token, tipo: tipoPerAnteprima(tipo) }
 }
 
-/** Dimensione reale di un file caricato, o null se non c'è. */
-export async function infoOggetto(percorso: string): Promise<{ dimensione: number } | null> {
+/**
+ * Dimensione reale di un file caricato (e, con Supabase, il tipo con cui è stato salvato), o null se non c'è.
+ * Il tipo salvato è quello con cui Supabase servirà il file: va confrontato con quello atteso.
+ */
+export async function infoOggetto(percorso: string): Promise<{ dimensione: number; tipo?: string } | null> {
   controlla(percorso)
   if (driver() === 'locale') return infoFileLocale(cartellaFileLocali(), percorso)
   const i = percorso.lastIndexOf('/')
@@ -55,8 +58,9 @@ export async function infoOggetto(percorso: string): Promise<{ dimensione: numbe
   if (error) throw new Error(`Spazio file non raggiungibile: ${error.message}`)
   const o = data?.find((x) => x.name === percorso.slice(i + 1))
   if (!o) return null
-  const dimensione = Number((o.metadata as { size?: number } | null)?.size)
-  return { dimensione: Number.isFinite(dimensione) ? dimensione : 0 }
+  const meta = o.metadata as { size?: number; mimetype?: string } | null
+  const dimensione = Number(meta?.size)
+  return { dimensione: Number.isFinite(dimensione) ? dimensione : 0, tipo: typeof meta?.mimetype === 'string' && meta.mimetype ? meta.mimetype : undefined }
 }
 
 /**
@@ -76,7 +80,8 @@ export async function linkTemporaneo(
 
 /**
  * Cancella definitivamente dei documenti dallo spazio file. Usato SOLO quando un cliente viene
- * eliminato per sempre dal cestino (i documenti dei compiti non si eliminano dal gestionale).
+ * eliminato per sempre dal cestino (i documenti dei compiti non si eliminano dal gestionale) e per
+ * un file appena inviato ma rifiutato alla conferma, quindi mai registrato in un compito.
  */
 export async function eliminaOggetti(percorsi: string[]): Promise<void> {
   const validi = percorsi.filter((p) => PERCORSO_VALIDO.test(p))

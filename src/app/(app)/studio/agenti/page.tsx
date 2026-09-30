@@ -113,10 +113,10 @@ export default async function PaginaAgenti({ searchParams }: PageProps<'/studio/
                 {coda.inAttesa.map((p) => (
                   <li key={p.id} className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_auto]">
                     <div className="grid min-w-0 gap-1">
-                      <p className="font-medium">{p.descrizione.titolo}</p>
+                      <p className="break-words font-medium">{p.descrizione.titolo}</p>
                       {p.descrizione.dettagli.length > 0 && (
                         <ul className="grid gap-0.5 text-sm text-muted-foreground">
-                          {p.descrizione.dettagli.map((d, i) => <li key={i} className="break-words">{d}</li>)}
+                          {p.descrizione.dettagli.map((d, i) => <li key={i} className="whitespace-pre-wrap break-words">{d}</li>)}
                         </ul>
                       )}
                       <p className="text-xs text-muted-foreground">

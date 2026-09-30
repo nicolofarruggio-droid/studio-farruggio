@@ -53,6 +53,20 @@ scripts/locale/          stack locale senza Docker (Postgres + GoTrue + Mailpit 
 4. I token Gmail sono in una tabella senza alcun privilegio per gli utenti; il codice email fa solo GET.
 5. Il registro attività traccia inviti, ruoli, accessi, impostazioni (prima/dopo), assegnazioni,
    esportazioni, eliminazioni, indirizzi email dei clienti e tutte le azioni degli agenti.
+6. Solo il server del sito agisce per conto degli utenti: ogni transazione del server imposta
+   `app.canale = 'server'`; senza, il database non riconosce alcun utente e una policy restrittiva su ogni
+   tabella esclude tutto. La Data API di Supabase (REST, GraphQL, Realtime) resta quindi inutile anche con
+   un JWT valido, e la verifica in due passaggi (controllata dal server) non si aggira.
+7. Spazio file senza policy per gli utenti: si passa solo da link firmati creati dal server dopo il controllo
+   dei permessi. Nome, tipo (anche quello salvato nello spazio file) e dimensione si ricontrollano alla conferma;
+   il database rifiuta comunque nomi con caratteri nascosti e tipi non ammessi.
+8. Inviti: se il link non è partito per email (l'admin l'ha copiato), chi lo apre deve confermare l'indirizzo
+   con un'email prima che l'account esista, e sceglie poi la password: chi ha visto il link non può creare un
+   account a nome di altri. Al massimo 100 inviti al giorno per studio.
+   Registrazioni: Supabase Auth, con due registrazioni non confermate dello stesso indirizzo, terrebbe la password
+   della prima. Il sito elimina la registrazione non confermata precedente e chi conferma sceglie di nuovo la
+   password (e i dati dello studio), così nessuno può "preparare" un account a nome di altri.
+9. Un'email letta da una casella si associa solo ai clienti che il proprietario della casella vede.
 
 ## 2. Stato dei traguardi
 
@@ -75,9 +89,13 @@ scripts/locale/          stack locale senza Docker (Postgres + GoTrue + Mailpit 
    - Auth → Email Templates: copiare `supabase/templates/conferma.html` e `recupero.html`.
    - Auth → SMTP: lo stesso SMTP del punto 5. Auth → MFA: TOTP attivo.
    - Database: applicare le migrazioni con `supabase db push` oppure `DATABASE_URL_MIGRAZIONI=<connessione diretta> npm run db:migra`.
-     La migrazione dello storage crea il bucket privato `documenti` con le policy.
+     La migrazione dello storage crea il bucket privato `documenti` (senza accesso diretto per gli utenti).
+   - Project Settings → Data API: disattivarla (il sito non la usa; il database la rende comunque inutile).
+     Realtime non serve.
 2. **Vercel**: importare il repository, regione `fra1`, variabili d'ambiente da `.env.example`
    (separate per Preview e Production). `DATABASE_URL` = connessione del pooler (porta 6543, modalità transaction).
+   `NEXT_PUBLIC_SITE_URL` = indirizzo pubblico del sito (serve per i link nelle email). Non impostare in produzione
+   `AI_SIMULATA`, `GMAIL_SIMULATO`, `CONSENTI_MODALITA_PROVA`, `STORAGE_DRIVER`.
    I processi pianificati sono in `vercel.json` (email ogni 10 minuti, notifiche ogni 5 minuti, pulizia notturna del cestino)
    e usano `CRON_SECRET`.
 3. **Anthropic**: account Claude Console di studiofarruggio@gmail.com, chiave API in `ANTHROPIC_API_KEY`
@@ -114,3 +132,6 @@ segnato con `DECISIONE APERTA`. Da confermare con il titolare:
 | 13 | Solo Gmail o anche Outlook/Microsoft 365? | Solo Gmail; il modello dati prevede `fornitore = microsoft` |
 | 14 | Elaborazione AI fuori UE (API Anthropic diretta) | Accettata nelle specifiche; da coprire con DPA e informativa |
 | 15 | Aspetti legali (informativa, termini, DPA, Statuto dei lavoratori, verifica Google) | Pagine segnaposto; lettura email spenta di default per studio |
+| 16 | Se Sonnet 5.5 rifiuta un testo, riprovare con un modello di riserva scelto da Anthropic? | No (le specifiche chiedono Sonnet 5.5 per tutto): si mostra l'errore. Si accende con `AI_MODELLO_RISERVA=si` |
+| 17 | Indirizzi email aggiunti da un collaboratore ai propri clienti | Usati subito per associare le email, ma solo dalle caselle di chi vede quel cliente (quindi anche da quelle degli admin); ogni aggiunta è nel registro attività. Alternativa più prudente: gli indirizzi aggiunti dai collaboratori valgono per le caselle degli admin solo dopo l'approvazione di un admin |
+| 18 | Limite di richieste per l'API usata da una persona con il proprio access token | Nessun limite per ora (i limiti `API_LIMITE_*` valgono per i token agente). Proposta: stessi limiti, contati per persona |

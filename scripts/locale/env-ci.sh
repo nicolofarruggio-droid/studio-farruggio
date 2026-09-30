@@ -15,6 +15,7 @@ SMTP_PORT=1025
 EMAIL_MITTENTE="BigBrotherStudio <noreply@bigbrotherstudio.local>"
 AI_SIMULATA=1
 GMAIL_SIMULATO=1
+CONSENTI_MODALITA_PROVA=1
 EMAIL_TOKEN_CHIAVE=$(openssl rand -base64 32)
 CRON_SECRET=segreto-cron-locale
 FINE

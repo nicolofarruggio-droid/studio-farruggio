@@ -105,7 +105,9 @@ export function pulisciNomeFile(nome: string): string {
   return n
 }
 
-const normalizzaMime = (t: string | null | undefined) => String(t ?? '').split(';')[0].trim().toLowerCase()
+/** Tipo MIME senza parametri, in minuscolo ("text/plain; charset=utf-8" → "text/plain"). */
+export const tipoBase = (t: string | null | undefined) => String(t ?? '').split(';')[0].trim().toLowerCase()
+const normalizzaMime = tipoBase
 
 export type FileDaValidare = { nome: string; tipo?: string | null; dimensione: number }
 export type FileValido = { ok: true; nome: string; tipo: string; dimensione: number }

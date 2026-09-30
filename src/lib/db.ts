@@ -42,7 +42,7 @@ export async function conUtente<T>(
 ): Promise<T> {
   const claims = JSON.stringify({ sub: persona.id, email: persona.email, role: 'authenticated' })
   return sql().begin(async (tx) => {
-    await tx`select set_config('request.jwt.claims', ${claims}, true), set_config('role', 'authenticated', true)`
+    await tx`select set_config('request.jwt.claims', ${claims}, true), set_config('role', 'authenticated', true), set_config('app.canale', 'server', true)`
     if (opzioni.origine) await tx`select set_config('app.origine', ${opzioni.origine}, true)`
     return fn(tx)
   }) as Promise<T>

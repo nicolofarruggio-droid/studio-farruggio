@@ -10,7 +10,7 @@ const sql = postgres(process.env.DATABASE_URL ?? 'postgres://postgres:postgres@1
 async function comeAdmin<T>(email: string, fn: (tx: postgres.TransactionSql) => Promise<T>) {
   const [u] = await sql<{ id: string }[]>`select id from public.utenti where email = ${email}`
   return sql.begin(async (tx) => {
-    await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: u.id, email, role: 'authenticated' })}, true), set_config('role', 'authenticated', true)`
+    await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: u.id, email, role: 'authenticated' })}, true), set_config('role', 'authenticated', true), set_config('app.canale', 'server', true)`
     return fn(tx)
   }) as Promise<T>
 }

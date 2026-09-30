@@ -1,4 +1,5 @@
 import 'server-only'
+import { modalitaProvaConsentita } from '@/lib/modalita-prova'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import path from 'node:path'
@@ -14,7 +15,7 @@ import { ErroreCursoreScaduto, ErroreNonTrovato, type ClienteGmail, type Rispost
 export const PREFISSO_TOKEN_PROVA = 'simulato:'
 
 export function gmailSimulato(): boolean {
-  return process.env.GMAIL_SIMULATO === '1' && process.env.VERCEL_ENV !== 'production'
+  return process.env.GMAIL_SIMULATO === '1' && modalitaProvaConsentita()
 }
 
 type EmailProva = {

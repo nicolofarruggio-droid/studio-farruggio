@@ -6,12 +6,12 @@ import { leggiSessione } from '@/lib/auth/sessione'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { ModuloPasswordInvito, PulsanteAccetta } from './moduli'
+import { ModuloConfermaInvito, ModuloPasswordInvito, PulsanteAccetta } from './moduli'
 import { PulsanteGoogle, Separatore } from '../../google'
 
 export const metadata = { title: 'Invito' }
 
-type Info = { studio_nome: string; email: string; nome: string; cognome: string; ruolo: string; stato: string; scaduto: boolean }
+type Info = { studio_nome: string; email: string; nome: string; cognome: string; ruolo: string; stato: string; scaduto: boolean; email_inviata: boolean }
 
 function Errore({ titolo, testo }: { titolo: string; testo: string }) {
   return (
@@ -68,7 +68,11 @@ export default async function PaginaInvito({ params }: PageProps<'/invito/[codic
           )
         ) : (
           <>
-            <ModuloPasswordInvito codice={codice} email={invito.email} />
+            {invito.email_inviata ? (
+              <ModuloPasswordInvito codice={codice} email={invito.email} />
+            ) : (
+              <ModuloConfermaInvito codice={codice} email={invito.email} />
+            )}
             <Separatore />
             <div className="grid gap-2">
               <PulsanteGoogle next={`/invito/${codice}`} />

@@ -65,3 +65,45 @@ test('registrazione di un nuovo studio con conferma dell\'email', async ({ page 
   await expect(page).toHaveURL(/\/dashboard/)
   await expect(page.getByText('Studio Prova E2E').first()).toBeVisible()
 })
+
+// Supabase Auth, con due registrazioni non confermate dello stesso indirizzo, terrebbe la password della prima:
+// chi conferma deve poter entrare solo con una password scelta da sé.
+test('registrazione ripetuta con lo stesso indirizzo: chi conferma sceglie la password', async ({ page }) => {
+  test.setTimeout(120_000)
+  const email = `doppia.${unico()}@e2e-esempio.it`
+  const registra = async (studio: string, password: string) => {
+    await page.goto('/registrati')
+    await page.getByLabel('Nome dello studio').fill(studio)
+    await page.getByLabel('Nome', { exact: true }).fill('Elena')
+    await page.getByLabel('Cognome').fill('Doppia')
+    await page.getByLabel('Email').fill(email)
+    await page.getByLabel('Password personale').fill(password)
+    await page.getByLabel('Ripeti la password').fill(password)
+    await page.getByRole('checkbox').check()
+    await page.getByRole('button', { name: 'Registra lo studio' }).click()
+    await expect(page.getByText('Controlla la tua casella email')).toBeVisible()
+  }
+  await registra('Studio di Qualcun Altro', 'Password-di-altri-2026')
+  await fetch(`${process.env.MAILPIT_URL ?? 'http://127.0.0.1:8025'}/api/v1/search?query=${encodeURIComponent(`to:"${email}"`)}`, { method: 'DELETE' })
+  await registra('Studio Elena', PASSWORD)
+
+  await page.goto(await linkDaEmail(email, '/auth/conferma'))
+  await expect(page).toHaveURL(/\/reimposta-password/)
+  await page.getByLabel('Nuova password').fill(PASSWORD)
+  await page.getByLabel('Ripeti la password').fill(PASSWORD)
+  await page.getByRole('button', { name: 'Salva la password' }).click()
+  await expect(page).toHaveURL(/\/completa-registrazione/)
+  await page.getByLabel('Nome dello studio').fill('Studio Elena')
+  await page.getByLabel('Nome', { exact: true }).fill('Elena')
+  await page.getByLabel('Cognome').fill('Doppia')
+  await page.getByRole('checkbox').check()
+  await page.getByRole('button', { name: 'Crea lo studio' }).click()
+  await expect(page).toHaveURL(/\/email\/collega/)
+
+  await page.context().clearCookies()
+  await page.goto('/accedi')
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password', { exact: true }).fill('Password-di-altri-2026')
+  await page.getByRole('button', { name: 'Accedi', exact: true }).click()
+  await expect(page.getByText('Email o password non corretti')).toBeVisible()
+})

@@ -165,6 +165,35 @@ describe('annullamento delle azioni degli agenti (segna_attivita_annullata)', ()
   })
 })
 
+describe('proposte in coda quando l\'agente cambia', () => {
+  const proponi = async () => {
+    await come(db, agente, (tx) => tx.query(`select public.crea_proposta_agente('crea_compito', '{"titolo":"x"}')`))
+    const r = await righe<{ id: string }>(db, `select id from public.proposte_agente where stato = 'in_attesa' order by creata_il desc limit 1`)
+    return r[0].id
+  }
+  const decidi = (id: string, stato: string) => come(db, A.admin, (tx) => tx.query('select public.decidi_proposta_agente($1, $2)', [id, stato]))
+
+  it('senza più il permesso o con l\'agente disattivato non si approva, ma si rifiuta', async () => {
+    await permessi({ crea_compiti: 'proposta' })
+    const p1 = await proponi()
+    const p2 = await proponi()
+    await permessi({})
+    await expect(decidi(p1, 'approvata')).rejects.toThrow(/non ha più il permesso/)
+    await decidi(p1, 'rifiutata')
+    await permessi({ crea_compiti: 'proposta' })
+    await come(db, A.admin, (tx) => tx.query('select public.imposta_utente_attivo($1, false)', [agente.id]))
+    await expect(decidi(p2, 'approvata')).rejects.toThrow(/disattivato/)
+    await decidi(p2, 'fallita')
+  })
+
+  it('con il permesso ancora attivo (anche passato a "sì") si approva', async () => {
+    await permessi({ crea_compiti: 'proposta' })
+    const p = await proponi()
+    await permessi({ crea_compiti: 'si' })
+    await decidi(p, 'approvata')
+  })
+})
+
 describe('aggiornare i compiti richiede il permesso anche sui compiti creati dall\'agente', () => {
   it('con solo "crea_compiti" l\'agente non chiude, annulla, modifica né riassegna il suo compito', async () => {
     await permessi({ crea_compiti: 'si' })

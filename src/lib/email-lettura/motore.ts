@@ -51,8 +51,11 @@ export interface Archivio {
   registraNuove(c: CasellaInControllo, gmailIds: string[], cursore: string | null): Promise<number>
   /** messaggi da elaborare: nuovi, in attesa dell'AI o da rielaborare */
   daElaborare(casellaId: string, limite: number): Promise<string[]>
-  /** indirizzo esatto → clienti (non eliminati) dello studio con quell'indirizzo */
-  clientiPerIndirizzi(studioId: string, indirizzi: string[]): Promise<Map<string, string[]>>
+  /**
+   * indirizzo esatto → clienti (non eliminati) con quell'indirizzo, tra quelli che il proprietario della casella
+   * può vedere: un'email finisce solo nelle schede di clienti che chi l'ha ricevuta vede già
+   */
+  clientiPerIndirizzi(c: CasellaInControllo, indirizzi: string[]): Promise<Map<string, string[]>>
   segnaIgnorata(casellaId: string, gmailId: string, messageId: string | null): Promise<void>
   segnaAssociata(casellaId: string, gmailId: string, messageId: string, clienti: string[]): Promise<void>
   /** tentativo non riuscito (Gmail o AI): il messaggio resta da elaborare */
@@ -194,7 +197,7 @@ export async function eseguiControllo(p: {
 
   // 3. riconoscimento del cliente: solo l'indirizzo esatto del mittente
   const indirizzi = [...new Set(intestazioni.map((h) => h.mittente).filter((x): x is string => Boolean(x)))]
-  const clientiDi = indirizzi.length ? await archivio.clientiPerIndirizzi(c.studioId, indirizzi) : new Map<string, string[]>()
+  const clientiDi = indirizzi.length ? await archivio.clientiPerIndirizzi(c, indirizzi) : new Map<string, string[]>()
   const associate: Associata[] = []
   for (const h of intestazioni) {
     const esclusa = h.etichette.some((e) => ETICHETTE_ESCLUSE.includes(e))

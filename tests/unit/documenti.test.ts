@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto'
 vi.mock('server-only', () => ({}))
 
 import {
-  ACCEPT, contentDisposition, estensione, limiteByte, percorsoDocumento, pulisciNomeFile, tipoAnteprima, tipoPerAnteprima, validaFile,
+  ACCEPT, TIPI_AMMESSI, contentDisposition, estensione, limiteByte, percorsoDocumento, pulisciNomeFile, tipoAnteprima, tipoPerAnteprima, validaFile,
 } from '@/lib/documenti/regole'
 import { linkCaricamentoLocale, linkScaricamentoLocale, verificaLinkLocale } from '@/lib/documenti/link-locali'
 import { ErroreFileLocale, infoFileLocale, leggiFileLocale, percorsoSuDisco, scriviFileLocale } from '@/lib/documenti/locale'
@@ -245,5 +245,16 @@ describe('spazio file locale su disco', () => {
   it('non esce dalla cartella dei file', () => {
     expect(() => percorsoSuDisco(base, '../fuori')).toThrow()
     expect(() => percorsoSuDisco(base, `${randomUUID()}/compiti/../../x`)).toThrow()
+  })
+})
+
+describe('tipi ammessi anche nel database', () => {
+  it('la migrazione accetta esattamente i tipi registrati da regole.ts', async () => {
+    const { readFileSync } = await import('node:fs')
+    const sql = readFileSync('supabase/migrations/20260930007000_solo_dal_server.sql', 'utf8')
+    const blocco = sql.slice(sql.indexOf('if new.tipo not in ('), sql.indexOf(') then', sql.indexOf('if new.tipo not in (')))
+    const nelDb = [...blocco.matchAll(/'([^']+)'/g)].map((m) => m[1]).sort()
+    const nelCodice = [...new Set(Object.values(TIPI_AMMESSI).map((t) => t.mime))].sort()
+    expect(nelDb).toEqual(nelCodice)
   })
 })

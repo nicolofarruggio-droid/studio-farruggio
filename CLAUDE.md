@@ -37,21 +37,34 @@ secondo studio: `paola.bianchi@bianchi-demo.it` e colleghi. Email di prova: Mail
 2. Tutto ciò che si fa per conto di un utente passa da `conUtente(persona, tx => …)` (`src/lib/db.ts`):
    la transazione gira con ruolo `authenticated` e i claims dell'utente, quindi valgono le policy RLS.
    Non filtrare "a mano" per studio pensando che basti: il filtro vero è nel database.
+   `conUtente` imposta anche `app.canale = 'server'`: senza quel valore il database non riconosce nessun utente
+   (`public.io()` è null) e una policy RESTRICTIVE `solo_dal_server` su ogni tabella esclude tutto. Così la
+   Data API di Supabase (REST, GraphQL, Realtime) non serve a nulla anche con un JWT valido, e la verifica in due
+   passaggi, controllata dal server, non si può aggirare (migrazione `…007000_solo_dal_server.sql`).
 3. `comeSistema()` salta RLS: solo per processi del server (cron email, pagina pubblica dell'invito,
    profilo proprio in `leggiSessione`). Mai con input dell'utente non verificato.
 4. Le operazioni con effetti su più righe o su altri utenti (compiti, inviti, ruoli, assegnazioni, accessi,
-   indicatori) sono **funzioni SQL** `security definer` che controllano i permessi con `auth.uid()`:
+   indicatori) sono **funzioni SQL** `security definer` che controllano i permessi con `public.io()`
+   (**mai `auth.uid()`** nelle funzioni: un test lo verifica):
    interfaccia e API passano dalle stesse funzioni. Funzioni di permesso: `mio_studio()`, `e_admin()`,
    `vede_tutto_lo_studio()`, `lavora_su_tutto_lo_studio()`, `spazi_visibili()`, `spazi_lavorabili()`,
    `puo_vedere_cliente()`, `puo_lavorare_cliente()`, `puo_vedere_compito()`, `puo_lavorare_compito()`,
    `puo_controllare_compito()`, `puo_creare_compito_per()`, `agente_puo()`.
-5. Nuove tabelle: `studio_id`, RLS attiva, `revoke all … from anon, authenticated` e poi solo i grant necessari.
+5. Nuove tabelle: `studio_id`, RLS attiva, policy `solo_dal_server` (`as restrictive for all to authenticated
+   using (public.canale_server()) with check (public.canale_server())`), `revoke all … from anon, authenticated`
+   e poi solo i grant necessari. Il test `tests/db/solo-dal-server.test.ts` fallisce se manca qualcosa.
    Nelle policy usa `(select funzione())` per le funzioni senza argomenti. Una policy di select non deve
    rileggere la stessa tabella (romperebbe `insert … returning`).
 6. Ogni modifica di schema o policy: **nuovo file** in `supabase/migrations/` (mai modificare quelli già
    rilasciati) e test in `tests/db/` che provano sia il caso permesso sia quello vietato.
 7. I token delle caselle email stanno in `caselle_email_token` senza alcun grant: mai leggibili da interfaccia,
    API o AI. Il modulo email non fa mai chiamate di scrittura a Gmail (solo GET, permesso `gmail.readonly`).
+   Un'email si associa solo ai clienti che il proprietario della casella vede (`clientiPerIndirizzi`).
+8. Spazio file: nessuna policy per gli utenti su `storage.objects`; il server controlla i permessi e crea link
+   firmati. Alla conferma di un caricamento si ricontrollano nome, tipo (anche quello salvato) e dimensione;
+   il database rifiuta comunque nomi con caratteri nascosti e tipi non ammessi (stesso elenco di `regole.ts`).
+9. Redirect dopo l'accesso solo con `percorsoSicuro()`; link nelle email solo con `urlSito()` (in produzione
+   non usa l'intestazione Host).
 
 ## Convenzioni del codice
 
@@ -69,7 +82,8 @@ secondo studio: `paola.bianchi@bianchi-demo.it` e colleghi. Email di prova: Mail
   al passaggio del mouse o col trascinamento; stato mai solo col colore (icona + testo); URL stabili
   (`/clienti/[id]`, `/compiti/[id]`, `/collaboratori/[id]`); filtri e ordinamento negli URL (`?q=&ordina=`).
 - AI: solo tramite `src/lib/ai/claude.ts` (`jsonDaClaude`, `flussoJsonDaClaude`), mai dal browser. Risposte a
-  schema fisso validate con zod; `AI_SIMULATA=1` solo in sviluppo e test.
+  schema fisso validate con zod; `AI_SIMULATA=1` solo in sviluppo e test (con `next start` serve anche
+  `CONSENTI_MODALITA_PROVA=1`, vedi `src/lib/modalita-prova.ts`).
 - Nessun segreto nel repository; nuove variabili d'ambiente documentate in `.env.example`.
 - Dati di esempio sempre inventati.
 

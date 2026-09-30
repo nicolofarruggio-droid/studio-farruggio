@@ -12,8 +12,8 @@ export default function PaginaReimpostaPassword() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="flex-col">
-        <CardTitle className="text-xl">Scegli una nuova password</CardTitle>
-        <CardDescription>Almeno 10 caratteri. Da ora entrerai con questa.</CardDescription>
+        <CardTitle className="text-xl">Scegli la tua password</CardTitle>
+        <CardDescription>Almeno 10 caratteri. Da ora entrerai con la tua email e questa password.</CardDescription>
       </CardHeader>
       <CardContent>
         <form action={azione} className="grid gap-4" noValidate>

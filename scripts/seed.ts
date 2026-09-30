@@ -14,7 +14,7 @@ type P = { id: string; email: string; nome: string; cognome: string }
 
 async function come<T>(p: P, fn: (tx: postgres.TransactionSql) => Promise<T>): Promise<T> {
   return sql.begin(async (tx) => {
-    await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: p.id, email: p.email, role: 'authenticated' })}, true), set_config('role', 'authenticated', true)`
+    await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: p.id, email: p.email, role: 'authenticated' })}, true), set_config('role', 'authenticated', true), set_config('app.canale', 'server', true)`
     return fn(tx)
   }) as Promise<T>
 }

@@ -29,8 +29,22 @@ export async function nuovoDb(): Promise<PGlite> {
   return (await (await modello).clone()) as PGlite
 }
 
-/** Esegue fn come l'utente indicato: ruolo `authenticated` e claims come nel JWT di Supabase. */
+/**
+ * Esegue fn come l'utente indicato: ruolo `authenticated` e claims come nel JWT di Supabase,
+ * passando dal server del sito (app.canale = 'server', come conUtente in src/lib/db.ts).
+ */
 export async function come<T>(db: PGlite, persona: Persona, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.query(`select set_config('request.jwt.claims', $1, true), set_config('app.canale', 'server', true)`, [
+      JSON.stringify({ sub: persona.id, email: persona.email, role: 'authenticated' }),
+    ])
+    await tx.exec('set local role authenticated')
+    return fn(tx)
+  })
+}
+
+/** Come `come`, ma senza passare dal server: è ciò che farebbe chi usa il JWT direttamente con la Data API di Supabase. */
+export async function diretto<T>(db: PGlite, persona: Persona, fn: (tx: Tx) => Promise<T>): Promise<T> {
   return db.transaction(async (tx) => {
     await tx.query(`select set_config('request.jwt.claims', $1, true)`, [
       JSON.stringify({ sub: persona.id, email: persona.email, role: 'authenticated' }),

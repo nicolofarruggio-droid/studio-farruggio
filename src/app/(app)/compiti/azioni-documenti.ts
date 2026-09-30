@@ -5,8 +5,8 @@ import { z } from 'zod'
 import { conUtente } from '@/lib/db'
 import { richiediUtente } from '@/lib/auth/sessione'
 import { messaggioErrore, type EsitoAzione } from '@/lib/errori'
-import { infoOggetto, limiteDocumenti, preparaDestinazione } from '@/lib/documenti'
-import { MAX_FILE_PER_VOLTA, percorsoDocumento, validaFile } from '@/lib/documenti/regole'
+import { eliminaOggetti, infoOggetto, limiteDocumenti, preparaDestinazione } from '@/lib/documenti'
+import { MAX_FILE_PER_VOLTA, percorsoDocumento, tipoBase, tipoPerAnteprima, validaFile } from '@/lib/documenti/regole'
 import type { FileCaricato, FilePreparato } from '@/lib/documenti/tipi'
 
 // Caricamento dei documenti di un compito (sezione 8), in tre passi:
@@ -101,6 +101,12 @@ export async function confermaCaricamento(
       const v = validaFile({ nome: f.nome, tipo: f.tipo, dimensione: info.dimensione }, max)
       if (!v.ok) {
         errori.push(v.errore)
+        continue
+      }
+      // il file deve essere stato salvato con il tipo previsto (Supabase lo serve con quel tipo)
+      if (info.tipo !== undefined && tipoBase(info.tipo) !== tipoBase(tipoPerAnteprima(v.tipo))) {
+        await eliminaOggetti([percorso]).catch(() => {})
+        errori.push(`«${v.nome}»: il tipo del file inviato non corrisponde a quello dichiarato. Riprova a caricarlo.`)
         continue
       }
       daRegistrare.push({ id: f.file_id, nome: v.nome, tipo: v.tipo, dimensione: info.dimensione, percorso })

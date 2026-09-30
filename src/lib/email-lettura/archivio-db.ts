@@ -1,10 +1,11 @@
 import 'server-only'
-import { comeSistema } from '@/lib/db'
+import { comeSistema, conUtente } from '@/lib/db'
 import { normalizzaOggetto } from './messaggi'
 import type { Archivio, Precedente } from './motore'
 
 // Archivio del controllo email nel database. Gira con comeSistema() perché è un processo del server
-// (sezione 16.3, CLAUDE.md regola 3): nessun input dell'utente arriva qui senza controlli.
+// (sezione 16.3, CLAUDE.md regola 3): nessun input dell'utente arriva qui senza controlli. Fa eccezione la
+// scelta dei clienti, che rispetta ciò che vede il proprietario della casella.
 // Per le email ignorate si salvano SOLO l'identificativo Gmail e il Message-ID.
 
 export const archivioDb: Archivio = {
@@ -36,12 +37,14 @@ export const archivioDb: Archivio = {
     return r.map((x) => x.gmail_id)
   },
 
-  async clientiPerIndirizzi(studioId, indirizzi) {
-    const r = await comeSistema((sql) => sql<{ indirizzo: string; clienti: string[] }[]>`
+  async clientiPerIndirizzi(c, indirizzi) {
+    // Con i permessi del proprietario della casella: le sue email vanno solo su clienti che lui vede.
+    // Così nessuno può "catturare" le email di un collega aggiungendo un indirizzo a un proprio cliente.
+    const r = await conUtente({ id: c.utenteId, email: '' }, (tx) => tx<{ indirizzo: string; clienti: string[] }[]>`
       select e.indirizzo, array_agg(distinct e.cliente_id::text) as clienti
       from public.clienti_email e
       join public.clienti c on c.id = e.cliente_id and c.studio_id = e.studio_id
-      where e.studio_id = ${studioId} and c.eliminato_il is null and e.indirizzo = any(${indirizzi}::text[])
+      where e.studio_id = ${c.studioId} and c.eliminato_il is null and e.indirizzo = any(${indirizzi}::text[])
       group by e.indirizzo`)
     return new Map(r.map((x) => [x.indirizzo, x.clienti]))
   },

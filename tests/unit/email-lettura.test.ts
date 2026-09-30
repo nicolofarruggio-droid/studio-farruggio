@@ -380,7 +380,7 @@ class ArchivioMemoria implements Archivio {
   async daElaborare(casella: string, limite: number) {
     return [...this.di(casella).values()].filter((e) => ['in_attesa', 'da_rielaborare'].includes(e.esito) && e.tentativi < 5).slice(0, limite).map((e) => e.gmailId)
   }
-  async clientiPerIndirizzi(_studio: string, indirizzi: string[]) {
+  async clientiPerIndirizzi(_casella: unknown, indirizzi: string[]) {
     return new Map(indirizzi.filter((i) => this.indirizzi[i]).map((i) => [i, this.indirizzi[i]]))
   }
   async segnaIgnorata(casella: string, gmailId: string, messageId: string | null) {

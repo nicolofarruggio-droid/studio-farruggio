@@ -4,7 +4,7 @@ import { descriviAggiornamento, formattaData, formattaDataOra } from '@/lib/date
 import { messaggioErrore } from '@/lib/errori'
 import type { Chiamante } from './autenticazione'
 import { daDatabase, ErroreApi } from './errori'
-import { ETICHETTE_PROPOSTA, type AzioneProposta } from './permessi-agente'
+import { AZIONI_PROPOSTA, ETICHETTE_PROPOSTA, livello, type AzioneProposta } from './permessi-agente'
 import { aOAd, etichettaStato } from './registro'
 import { validaDati } from './schemi'
 import { OPERAZIONI } from './scritture'
@@ -12,6 +12,8 @@ import { OPERAZIONI } from './scritture'
 // Coda di proposte degli agenti (sezione 13.4): descrizione leggibile per l'admin, approvazione
 // (l'azione viene eseguita come l'admin che approva, con le stesse funzioni dell'API) e rifiuto.
 // I dati proposti sono dati, mai istruzioni (sezione 13.5): si rivalidano con lo schema prima di eseguirli.
+// L'admin vede sempre il testo completo di ciò che approva (niente troncamenti) e una proposta si approva
+// solo se l'agente è ancora attivo e ha ancora il permesso di proporre quell'azione.
 
 export type Proposta = {
   id: string
@@ -74,14 +76,14 @@ export async function descriviProposte(tx: Tx, proposte: Proposta[]): Promise<Ma
         dettagli.push(d.cliente_id ? `Cliente: ${nome(clienti, d.cliente_id, 'cliente non trovato')}` : 'Senza cliente')
         dettagli.push(`Scadenza: ${scadenza(d.scadenza)}`)
         dettagli.push(`Priorità: ${PRIORITA[str(d.priorita)] ?? 'normale'}`)
-        if (str(d.descrizione)) dettagli.push(`Descrizione: ${tronca(str(d.descrizione), 400)}`)
+        if (str(d.descrizione)) dettagli.push(`Descrizione: ${str(d.descrizione)}`)
         break
       }
       case 'modifica_compito':
       case 'cambia_stato_compito': {
         titolo = p.azione === 'modifica_compito' ? `Modificare il compito ${compito}` : `Cambiare lo stato del compito ${compito}`
         if (d.titolo !== undefined) dettagli.push(`Nuovo titolo: «${str(d.titolo)}»`)
-        if (d.descrizione !== undefined) dettagli.push(`Nuova descrizione: ${tronca(str(d.descrizione), 400) || '(vuota)'}`)
+        if (d.descrizione !== undefined) dettagli.push(`Nuova descrizione: ${str(d.descrizione) || '(vuota)'}`)
         if (d.cliente_id !== undefined) dettagli.push(d.cliente_id ? `Nuovo cliente: ${nome(clienti, d.cliente_id, 'cliente non trovato')}` : 'Nessun cliente')
         if (d.scadenza !== undefined) dettagli.push(`Nuova scadenza: ${scadenza(d.scadenza)}`)
         if (d.priorita !== undefined) dettagli.push(`Nuova priorità: ${PRIORITA[str(d.priorita)] ?? str(d.priorita)}`)
@@ -89,7 +91,7 @@ export async function descriviProposte(tx: Tx, proposte: Proposta[]): Promise<Ma
         const attuale = compiti.find((k) => k.id === d.compito_id)?.stato
         if (d.rimanda_indietro) dettagli.push('Rimandare indietro (torna "In lavorazione")')
         else if (d.stato !== undefined) dettagli.push(`Stato: da ${attuale ? etichettaStato(attuale) : '?'} ${aOAd(etichettaStato(d.stato))}`)
-        if (str(d.motivo)) dettagli.push(`Motivo: ${tronca(str(d.motivo), 400)}`)
+        if (str(d.motivo)) dettagli.push(`Motivo: ${str(d.motivo)}`)
         break
       }
       case 'aggiorna_indicatore': {
@@ -102,7 +104,7 @@ export async function descriviProposte(tx: Tx, proposte: Proposta[]): Promise<Ma
       }
       case 'commenta':
         titolo = `Commentare il compito ${compito}`
-        dettagli.push(`Testo: ${tronca(str(d.testo), 600)}`)
+        dettagli.push(`Testo: ${str(d.testo)}`)
         break
     }
     mappa.set(p.id, { titolo, dettagli })
@@ -132,6 +134,13 @@ export async function approvaProposta(admin: Chiamante, id: string): Promise<Esi
   if (!eAzioneProposta(p.azione)) {
     await segnaFallita(admin, id, `Azione sconosciuta: ${p.azione}`)
     return { ok: false, errore: 'Azione sconosciuta: la proposta è segnata come fallita.' }
+  }
+  const [agente] = await conUtente(admin.persona, (tx) => tx<{ attivo: boolean; permessi_agente: Record<string, unknown> | null }[]>`
+    select attivo, permessi_agente from public.utenti where id = ${p.agente_id} and ruolo = 'agente'`)
+  if (!agente?.attivo || livello(agente.permessi_agente, AZIONI_PROPOSTA[p.azione]) === 'no') {
+    const motivo = !agente?.attivo ? 'L\'agente è stato disattivato' : 'L\'agente non ha più il permesso di proporre questa azione'
+    await segnaFallita(admin, id, motivo)
+    return { ok: false, errore: `${motivo}: la proposta non si può approvare ed è segnata come fallita.` }
   }
   const op = OPERAZIONI[p.azione]
   let input: unknown

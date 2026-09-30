@@ -1,4 +1,5 @@
 import 'server-only'
+import { modalitaProvaConsentita } from '@/lib/modalita-prova'
 import Anthropic from '@anthropic-ai/sdk'
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import type { z } from 'zod'
@@ -27,13 +28,14 @@ const PREZZI: Record<string, [number, number]> = {
 
 /**
  * Modello di riserva in caso di rifiuto dei filtri di sicurezza (raro per email e fogli di clienti):
- * l'API ripete la richiesta su un altro modello scelto da Anthropic. DECISIONE APERTA: le specifiche chiedono
- * Sonnet 5.5 per tutto; con AI_MODELLO_RISERVA=no la riserva si spegne e il rifiuto viene mostrato all'utente.
+ * l'API ripete la richiesta su un altro modello scelto da Anthropic. DECISIONE APERTA (PIANO n. 16): le
+ * specifiche chiedono Sonnet 5.5 per tutto, quindi è spenta e il rifiuto viene mostrato all'utente;
+ * con AI_MODELLO_RISERVA=si si accende.
  */
 const riserva = () =>
-  process.env.AI_MODELLO_RISERVA === 'no'
-    ? {}
-    : { betas: ['server-side-fallback-2026-07-01'] as string[], fallbacks: 'default' as const }
+  process.env.AI_MODELLO_RISERVA === 'si'
+    ? { betas: ['server-side-fallback-2026-07-01'] as string[], fallbacks: 'default' as const }
+    : {}
 
 export type FunzioneAI = 'importazione' | 'riassunto_email' | 'riassunto_incollato'
 /** Per conto di chi si registra la chiamata: un utente (interfaccia) o uno studio (processi del server). */
@@ -43,7 +45,7 @@ export class ErroreAI extends Error {}
 
 /** Solo sviluppo e test: risposte simulate, nessuna chiamata esterna. Mai in produzione. */
 export function aiSimulata(): boolean {
-  return process.env.AI_SIMULATA === '1' && process.env.VERCEL_ENV !== 'production'
+  return process.env.AI_SIMULATA === '1' && modalitaProvaConsentita()
 }
 
 export function aiDisponibile(): boolean {

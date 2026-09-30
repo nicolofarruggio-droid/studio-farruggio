@@ -2,7 +2,11 @@
 # In produzione le stesse impostazioni si fanno nel pannello di Supabase (progetto in regione UE, Francoforte).
 project_id = "bigbrotherstudio"
 
+# Data API (REST/GraphQL) spenta: il sito legge e scrive solo dal server (postgres.js). In produzione:
+# pannello Supabase → Project Settings → Data API → disattivare (o togliere "public" dagli schemi esposti).
+# Anche se restasse accesa, il database rifiuta le richieste che non arrivano dal server (migrazione 7000).
 [api]
+enabled = false
 port = 54321
 schemas = ["public"]
 max_rows = 1000
