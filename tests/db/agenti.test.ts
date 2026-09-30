@@ -133,3 +133,22 @@ describe('un agente non ha poteri da creatore sui compiti che crea', () => {
     await come(db, A.c1, (tx) => tx.query(`select public.cambia_stato_compito($1, 'annullato', 'non serve più')`, [id]))
   })
 })
+
+describe('documenti caricati da un agente', () => {
+  const registra = (compito: string) =>
+    come(db, agente, async (tx) => {
+      const id = crypto.randomUUID()
+      await tx.query(`select public.registra_documento($1, $2, 'riepilogo.csv', 'text/csv', 10, $3)`, [compito, id, `${A.id}/compiti/${compito}/${id}`])
+    })
+
+  it('senza permesso no; con carica_documenti = si su qualsiasi compito aperto dello studio', async () => {
+    const compito = await creaCompito(db, A.admin, A.c1.id, null)
+    await expect(registra(compito)).rejects.toThrow(/Non puoi caricare/)
+    await permessi({ carica_documenti: 'proposta' })
+    await expect(registra(compito)).rejects.toThrow(/Non puoi caricare/)
+    await permessi({ carica_documenti: 'si' })
+    await registra(compito)
+    const altro = await creaCompito(db, B.admin, B.c1.id, null)
+    await expect(registra(altro)).rejects.toThrow()
+  })
+})

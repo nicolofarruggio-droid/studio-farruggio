@@ -1,6 +1,7 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { conUtente } from '@/lib/db'
+import { urlSito } from '@/lib/sito'
 import { limiteDocumenti, linkTemporaneo, salvaOggetto, DURATA_LINK_SECONDI } from '@/lib/documenti'
 import { MAX_FILE_PER_VOLTA, percorsoDocumento, pulisciNomeFile, validaFile } from '@/lib/documenti/regole'
 import type { Chiamante } from './autenticazione'
@@ -16,14 +17,19 @@ export function limiteCaricamentoApi(): number {
   return Math.min(limiteDocumenti(), Math.max(1, Number.isFinite(mb) ? mb : 4) * 1024 * 1024)
 }
 
-type Documento = { id: string; nome_file: string; tipo: string; dimensione: number; caricato_da: string | null; caricato_il: Date }
+type Documento = {
+  id: string; nome_file: string; tipo: string; dimensione: number
+  caricato_da: { id: string; nome: string; ruolo: string } | null; caricato_il: Date
+}
 
 export async function elencaDocumenti(c: Chiamante, compito: string) {
   return conUtente(c.persona, async (tx) => {
     const [k] = await tx`select id from public.compiti where id = ${compito}`
     if (!k) throw nonTrovato('Compito non trovato')
     const dati = await tx<Documento[]>`
-      select d.id, d.nome_file, d.tipo, d.dimensione::int as dimensione, trim(u.nome || ' ' || u.cognome) as caricato_da, d.caricato_il
+      select d.id, d.nome_file, d.tipo, d.dimensione::int as dimensione,
+        case when u.id is null then null else json_build_object('id', u.id, 'nome', trim(u.nome || ' ' || u.cognome), 'ruolo', u.ruolo) end as caricato_da,
+        d.caricato_il
       from public.compiti_documenti d left join public.utenti u on u.id = d.caricato_da
       where d.compito_id = ${compito} order by d.caricato_il`
     return { dati }
@@ -34,7 +40,9 @@ export async function linkDocumento(c: Chiamante, compito: string, documento: st
   const [d] = await conUtente(c.persona, (tx) => tx<{ percorso: string; nome_file: string; tipo: string }[]>`
     select percorso, nome_file, tipo from public.compiti_documenti where id = ${documento} and compito_id = ${compito}`)
   if (!d) throw nonTrovato('Documento non trovato')
-  const url = await linkTemporaneo(d.percorso, { modo, nome: d.nome_file, tipo: d.tipo })
+  const link = await linkTemporaneo(d.percorso, { modo, nome: d.nome_file, tipo: d.tipo })
+  // con lo spazio file locale il link è relativo: per chi usa l'API serve l'indirizzo completo
+  const url = link.startsWith('/') ? `${await urlSito()}${link}` : link
   return { url, scade_tra_secondi: DURATA_LINK_SECONDI, nome_file: d.nome_file }
 }
 
@@ -57,7 +65,8 @@ export async function caricaDocumenti(c: Chiamante, compito: string, file: File[
 
   const [k] = await conUtente(c.persona, (tx) => tx<{ studio_id: string; aperto: boolean; puo: boolean }[]>`
     select studio_id, public.compito_aperto(stato) as aperto,
-      (public.puo_lavorare_compito(id) or public.puo_controllare_compito(id)) as puo
+      (case when public.e_agente() then public.agente_puo('carica_documenti')
+            else public.puo_lavorare_compito(id) or public.puo_controllare_compito(id) end) as puo
     from public.compiti where id = ${compito}`)
   if (!k) throw nonTrovato('Compito non trovato')
   if (!k.puo) throw permessoNegato('Non puoi caricare documenti su questo compito.')

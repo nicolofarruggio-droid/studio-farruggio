@@ -58,7 +58,7 @@ Di base l'agente è in **sola lettura**. Le azioni di scrittura si abilitano una
 | `aggiorna_compiti` | `PATCH /compiti/{id}` (stato, "rimanda indietro", campi e assegnatari) |
 | `aggiorna_indicatori` | `PUT /clienti/{id}/indicatori/{iva\|prima_nota}` |
 | `commenta` | `POST /compiti/{id}/commenti` |
-| `carica_documenti` | caricamento dei documenti (in arrivo con lo spazio file) |
+| `carica_documenti` | caricamento dei documenti (solo "sì": per i file non c'è la modalità proposta) |
 
 Anche con il permesso, valgono le regole del gestionale: per esempio chiudere, annullare, riaprire, rimandare indietro
 o modificare i campi di un compito spetta a un admin o a chi ha creato il compito (quindi l'agente può farlo solo sui
@@ -238,8 +238,9 @@ Decisione aperta (sezione 14): partire subito anche con il server MCP o solo con
 
 ## 12. In arrivo
 
-- **Documenti dei compiti**: caricamento e scaricamento (link temporaneo) con il permesso `carica_documenti`, insieme allo
-  spazio file. Già oggi `GET /compiti/{id}` elenca i documenti (nome, tipo, dimensione, chi e quando).
+- **Documenti dei compiti**: `GET /compiti/{id}/documenti` (elenco), `GET /compiti/{id}/documenti/{documento}?modo=scarica`
+  (link temporaneo di pochi minuti) e `POST /compiti/{id}/documenti` (multipart, campo `file`, al massimo 4 MB per richiesta)
+  con il permesso `carica_documenti`. Esempio: `curl -H "Authorization: Bearer $TOKEN" -F file=@verbale.pdf $API/compiti/$ID/documenti`.
 
 ## Struttura del codice
 
