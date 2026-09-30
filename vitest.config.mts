@@ -8,6 +8,8 @@ export default defineConfig({
     exclude: ['tests/e2e/**'],
     environment: 'node',
     testTimeout: 30000,
+    // ogni file di test del database crea istanze di Postgres in memoria (PGlite): pochi processi alla volta
+    maxWorkers: 2,
     hookTimeout: 60000,
   },
 })
