@@ -72,3 +72,22 @@ export async function linkTemporaneo(
   if (error || !data) throw new Error(`Spazio file non raggiungibile: ${error?.message ?? 'nessuna risposta'}`)
   return data.signedUrl
 }
+
+/**
+ * Cancella definitivamente dei documenti dallo spazio file. Usato SOLO quando un cliente viene
+ * eliminato per sempre dal cestino (i documenti dei compiti non si eliminano dal gestionale).
+ */
+export async function eliminaOggetti(percorsi: string[]): Promise<void> {
+  const validi = percorsi.filter((p) => PERCORSO_VALIDO.test(p))
+  if (validi.length === 0) return
+  if (driver() === 'locale') {
+    const { unlink } = await import('node:fs/promises')
+    const { percorsoSuDisco } = await import('./locale')
+    for (const p of validi) await unlink(percorsoSuDisco(cartellaFileLocali(), p)).catch(() => {})
+    return
+  }
+  for (let i = 0; i < validi.length; i += 100) {
+    const { error } = await supabaseServizio().storage.from(bucket()).remove(validi.slice(i, i + 100))
+    if (error) throw new Error(`Spazio file non raggiungibile: ${error.message}`)
+  }
+}
