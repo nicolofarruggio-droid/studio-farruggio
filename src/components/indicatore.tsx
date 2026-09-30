@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, CircleDashed, MinusCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { descriviAggiornamento, statoIndicatore, type StatoIndicatore } from '@/lib/date'
+import { aMese, descriviAggiornamento, statoIndicatore, type StatoIndicatore } from '@/lib/date'
 
 export const NOMI_INDICATORE = { iva: 'IVA', prima_nota: 'Prima nota' } as const
 
@@ -21,10 +21,14 @@ export function BadgeIndicatore({
     case 'in_ritardo':
       return (
         <Badge variant="pericolo" title="In ritardo rispetto alla soglia dello studio">
-          <AlertTriangle aria-hidden /> In ritardo · {descriviAggiornamento(valore!.aggiornato_fino_al!)}
+          <AlertTriangle aria-hidden /> In ritardo · <span className="sr-only">aggiornato </span>{descriviAggiornamento(valore!.aggiornato_fino_al!)}
         </Badge>
       )
     default:
-      return <Badge variant="successo"><CheckCircle2 aria-hidden /> {descriviAggiornamento(valore!.aggiornato_fino_al!)}</Badge>
+      return (
+        <Badge variant="successo" title={`Aggiornato ${aMese(descriviAggiornamento(valore!.aggiornato_fino_al!))}`}>
+          <CheckCircle2 aria-hidden /> <span className="sr-only">Aggiornato </span>{descriviAggiornamento(valore!.aggiornato_fino_al!)}
+        </Badge>
+      )
   }
 }

@@ -78,7 +78,7 @@ export function ModuloAnagrafica({
           <Campo id="numero_dipendenti" etichetta="N. dipendenti" facoltativo errore={campi?.numero_dipendenti}>
             <Input name="numero_dipendenti" type="number" min={0} step={1} defaultValue={valori.numero_dipendenti} />
           </Campo>
-          <Campo id="fatturato" etichetta="Fatturato (€)" facoltativo errore={campi?.fatturato} aiuto="Un solo valore, senza anno di riferimento.">
+          <Campo id="fatturato" etichetta="Fatturato (€)" facoltativo errore={campi?.fatturato} aiuto="Un solo valore, senza anno di riferimento." /* DECISIONE APERTA (PIANO n. 10) */>
             <Input name="fatturato" inputMode="decimal" defaultValue={valori.fatturato} placeholder="Per esempio 1.250.000" />
           </Campo>
           {!nuovo && (

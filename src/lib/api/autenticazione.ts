@@ -71,12 +71,27 @@ async function autenticaAgente(token: string): Promise<Chiamante> {
   return daProfilo(r, 'agente', { id: r.token_id, nome: r.token_nome, prefisso: r.prefisso, scade_il: r.scade_il })
 }
 
+/** Livello di autenticazione ("aal1" o "aal2") scritto nel token, già verificato da getUser. */
+function livelloToken(token: string): string | null {
+  try {
+    const corpo = JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8')) as { aal?: string }
+    return corpo.aal ?? null
+  } catch {
+    return null
+  }
+}
+
 async function autenticaPersona(token: string): Promise<Chiamante> {
   const supabase = createClient(supabaseUrl(), supabaseChiavePubblica(), {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   })
   const { data, error } = await supabase.auth.getUser(token)
   if (error || !data.user) throw nonAutenticato('Access token non valido o scaduto: accedi di nuovo per ottenerne uno.')
+  // verifica in due passaggi: se la persona l'ha attivata, il token deve essere di livello aal2
+  const haFattori = (data.user.factors ?? []).some((f) => f.status === 'verified')
+  if (haFattori && livelloToken(token) !== 'aal2') {
+    throw nonAutenticato('Serve la verifica in due passaggi: accedi di nuovo inserendo anche il codice dell\'app di autenticazione.')
+  }
   const [r] = await comeSistema((sql) => sql<RigaProfilo[]>`
     select ${colonneProfilo(sql)}
     from public.utenti u join public.studi s on s.id = u.studio_id

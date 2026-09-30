@@ -13,7 +13,7 @@ import { IndicatoreRapido } from '@/components/indicatore-rapido'
 import { Tessera } from './tessera'
 import { ElencoCompitiCompatto } from './elenco-compiti'
 
-type Accesso = { id: string; nome: string; livello: 'lettura' | 'completa'; verso: 'ricevuto' | 'concesso' }
+type Accesso = { id: string; persona_id: string; nome: string; livello: 'lettura' | 'completa'; verso: 'ricevuto' | 'concesso' }
 
 /** Dashboard del collaboratore (sezione 9): i miei clienti con i due indicatori e i miei compiti aperti. */
 export async function VistaCollaboratore({
@@ -25,10 +25,10 @@ export async function VistaCollaboratore({
     elencoCompiti(tx, { creatiDa: utenteId, stato: 'aperti' }),
     contatoriRitardi(tx, utenteId),
     tx<Accesso[]>`
-      select a.id, trim(u.nome || ' ' || u.cognome) as nome, a.livello, 'ricevuto' as verso
+      select a.id, u.id as persona_id, trim(u.nome || ' ' || u.cognome) as nome, a.livello, 'ricevuto' as verso
       from public.accessi_colleghi a join public.utenti u on u.id = a.proprietario_id where a.utente_id = ${utenteId}
       union all
-      select a.id, trim(u.nome || ' ' || u.cognome), a.livello, 'concesso'
+      select a.id, u.id, trim(u.nome || ' ' || u.cognome), a.livello, 'concesso'
       from public.accessi_colleghi a join public.utenti u on u.id = a.utente_id where a.proprietario_id = ${utenteId}`,
     tx<{ id: string }[]>`select id from public.compiti where rimandato_il is not null and stato = 'in_lavorazione'`,
   ])
@@ -124,7 +124,17 @@ export async function VistaCollaboratore({
               <p className="mb-1 font-medium">Spazi dei colleghi a cui hai accesso</p>
               {ricevuti.length === 0 ? <p className="text-muted-foreground">Nessuno.</p> : (
                 <ul className="list-disc pl-5">
-                  {ricevuti.map((a) => <li key={a.id}>{a.nome} · {a.livello === 'lettura' ? 'solo per vedere' : 'puoi anche lavorarci'}</li>)}
+                  {ricevuti.map((a) => (
+                    <li key={a.id}>
+                      {a.nome} · {a.livello === 'lettura' ? 'solo per vedere' : 'puoi anche lavorarci'}
+                      {!sola_lettura && (
+                        <span className="ml-2 inline-flex gap-2">
+                          <Link href={`/clienti?collaboratore=${a.persona_id}`} className="text-primary hover:underline">clienti</Link>
+                          <Link href={`/compiti?collaboratore=${a.persona_id}`} className="text-primary hover:underline">compiti</Link>
+                        </span>
+                      )}
+                    </li>
+                  ))}
                 </ul>
               )}
             </div>

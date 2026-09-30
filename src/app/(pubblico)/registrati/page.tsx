@@ -15,7 +15,7 @@ export default function PaginaRegistrazione() {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-5">
-        <PulsanteGoogle testo="Registrati con Google" />
+        <PulsanteGoogle />
         <Separatore />
         <ModuloRegistrazione />
         <p className="text-center text-sm text-muted-foreground">

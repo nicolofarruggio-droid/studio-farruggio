@@ -21,6 +21,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<'/api/document
     accedi.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search)
     return NextResponse.redirect(accedi, 303)
   }
+  if (sessione.serveSecondoPassaggio) return NextResponse.redirect(new URL('/accedi/verifica', request.url), 303)
   if (!sessione.utente?.attivo) return testo('Accesso non consentito.', 403)
   if (!UUID_VALIDO.test(id)) return testo('Documento non trovato.', 404)
 

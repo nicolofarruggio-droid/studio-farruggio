@@ -84,6 +84,7 @@ export function descriviAggiornamento(iso: string): string {
   return eFineMese(iso) ? meseAnno(iso) : formattaData(iso)
 }
 
+// DECISIONE APERTA (PIANO n. 2): soglie iniziali di 2 mesi per IVA e prima nota (modificabili in Impostazioni).
 export type StatoIndicatore = 'aggiornato' | 'in_ritardo' | 'da_impostare' | 'non_applicabile'
 
 /**

@@ -71,7 +71,7 @@ export default async function PaginaInvito({ params }: PageProps<'/invito/[codic
             <ModuloPasswordInvito codice={codice} email={invito.email} />
             <Separatore />
             <div className="grid gap-2">
-              <PulsanteGoogle next={`/invito/${codice}`} testo="Entra con Google" />
+              <PulsanteGoogle next={`/invito/${codice}`} />
               <p className="text-center text-xs text-muted-foreground">Usa l&apos;account Google di {invito.email}.</p>
             </div>
             <p className="text-center text-sm text-muted-foreground">

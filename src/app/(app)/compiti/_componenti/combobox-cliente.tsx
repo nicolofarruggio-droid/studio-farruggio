@@ -148,7 +148,6 @@ export function ComboboxCliente({
           placeholder="Cerca per nome dell'azienda o del titolare"
           value={testo}
           onClick={apri}
-          onFocus={apri}
           onChange={(e) => {
             setTesto(e.target.value)
             setFiltro(e.target.value)

@@ -28,10 +28,13 @@ export default async function PaginaClienti({ searchParams }: PageProps<'/client
   const f = leggiFiltri(await searchParams)
   const admin = utente.ruolo === 'admin'
   const tuttoLoStudio = admin || studio.visibilita !== 'solo_propri'
-  const { righe, persone } = await conUtente(persona, async (tx) => ({
+  const { righe, persone, spazi } = await conUtente(persona, async (tx) => ({
     righe: await elencoClienti(tx, f),
     persone: await colleghi(tx),
+    // spazi dei colleghi a cui l'utente ha accesso (sezione 3): servono per filtrare per collaboratore
+    spazi: (await tx<{ id: string }[]>`select proprietario_id as id from public.accessi_colleghi where utente_id = ${utente.id}`).map((r) => r.id),
   }))
+  const personeFiltro = tuttoLoStudio ? persone : persone.filter((p) => p.id === utente.id || spazi.includes(p.id))
   const parametri = Object.fromEntries(Object.entries(f).filter(([, v]) => v)) as Record<string, string>
   const filtriAttivi = Boolean(f.q || f.collaboratore || f.ritardo || f.stato)
   const esporta = `/api/esporta/clienti?${new URLSearchParams(parametri).toString()}`
@@ -39,7 +42,7 @@ export default async function PaginaClienti({ searchParams }: PageProps<'/client
   return (
     <>
       <Intestazione
-        titolo={tuttoLoStudio ? 'Clienti' : 'I miei clienti'}
+        titolo={tuttoLoStudio || spazi.length ? 'Clienti' : 'I miei clienti'}
         descrizione={`${righe.length} ${righe.length === 1 ? 'cliente' : 'clienti'}${filtriAttivi ? ' con i filtri scelti' : ''}. Clicca su IVA o prima nota per aggiornarle.`}
         azioni={
           <>
@@ -58,13 +61,13 @@ export default async function PaginaClienti({ searchParams }: PageProps<'/client
             <Input id="q" name="q" defaultValue={f.q} placeholder="Ragione sociale, titolare, P.IVA, email…" className="pl-8" />
           </div>
         </div>
-        {tuttoLoStudio && (
+        {(tuttoLoStudio || spazi.length > 0) && (
           <div className="grid gap-1.5">
             <Label htmlFor="collaboratore">Collaboratore</Label>
             <Select id="collaboratore" name="collaboratore" defaultValue={f.collaboratore}>
               <option value="">Tutti</option>
-              <option value="nessuno">Senza collaboratore</option>
-              {persone.map((p) => <option key={p.id} value={p.id}>{p.nome} {p.cognome}</option>)}
+              {tuttoLoStudio && <option value="nessuno">Senza collaboratore</option>}
+              {personeFiltro.map((p) => <option key={p.id} value={p.id}>{p.id === utente.id ? 'I miei clienti' : `Spazio di ${p.nome} ${p.cognome}`}</option>)}
             </Select>
           </div>
         )}

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { timingSafeEqual, createHash } from 'node:crypto'
+import { cronAutorizzato } from '@/lib/cron/autorizza'
 import { urlSito } from '@/lib/sito'
 import { mandaEmailNotifiche } from '@/lib/studio/email-notifiche'
 
@@ -10,17 +10,9 @@ import { mandaEmailNotifiche } from '@/lib/studio/email-notifiche'
 
 export const maxDuration = 60
 
-function autorizzato(request: NextRequest): boolean {
-  const segreto = process.env.CRON_SECRET
-  const intestazione = request.headers.get('authorization') ?? ''
-  if (!segreto) return false
-  const a = createHash('sha256').update(intestazione).digest()
-  const b = createHash('sha256').update(`Bearer ${segreto}`).digest()
-  return timingSafeEqual(a, b)
-}
 
 export async function GET(request: NextRequest) {
-  if (!autorizzato(request)) return NextResponse.json({ errore: 'Non autorizzato' }, { status: 401 })
+  if (!cronAutorizzato(request)) return NextResponse.json({ errore: 'Non autorizzato' }, { status: 401 })
   try {
     const resoconto = await mandaEmailNotifiche({
       sito: await urlSito(),

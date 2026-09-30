@@ -17,7 +17,7 @@ export type EsitoInvito = { email: string; emailInviata: boolean; link?: string;
 
 const schemaInvito = z.object({
   nome: z.string().trim().min(1, 'Scrivi il nome').max(100, 'Nome troppo lungo'),
-  cognome: z.string().trim().max(100, 'Cognome troppo lungo').default(''),
+  cognome: z.string().trim().min(1, 'Scrivi il cognome').max(100, 'Cognome troppo lungo'),
   email: z.string().trim().toLowerCase().regex(EMAIL_VALIDA, 'Indirizzo email non valido').max(254),
   ruolo: z.enum(['admin', 'collaboratore'], { message: 'Scegli il ruolo' }),
 })

@@ -109,7 +109,7 @@ export function ModuloPermessi({ agente, nome, permessi }: { agente: string; nom
               <p id={`permesso-${agente}-${a}-aiuto`} className="text-xs text-muted-foreground">{DESCRIZIONI_AZIONI[a].aiuto}</p>
             </div>
             <Select id={`permesso-${agente}-${a}`} name={a} defaultValue={permessi[a]} aria-describedby={`permesso-${agente}-${a}-aiuto`}>
-              {(['no', 'si', 'proposta'] as const).map((l) => <option key={l} value={l}>{ETICHETTE_LIVELLO[l]}</option>)}
+              {(a === 'carica_documenti' ? (['no', 'si'] as const) : (['no', 'si', 'proposta'] as const)).map((l) => <option key={l} value={l}>{ETICHETTE_LIVELLO[l]}</option>)}
             </Select>
           </div>
         ))}

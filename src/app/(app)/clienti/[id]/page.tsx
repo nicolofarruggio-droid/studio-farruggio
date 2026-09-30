@@ -254,7 +254,7 @@ export default async function PaginaCliente({ params, searchParams }: PageProps<
             <CardHeader><CardTitle className="flex items-center gap-2"><Users className="size-4" aria-hidden /> Collaboratori assegnati</CardTitle></CardHeader>
             <CardContent className="grid gap-3 pt-0">
               <Assegnazioni cliente={cliente.id} assegnati={s.assegnati} colleghi={persone.filter((p) => p.attivo)} admin={admin} />
-              {s.storicoAssegnazioni.length > 1 && (
+              {s.storicoAssegnazioni.length > 0 && (
                 <details>
                   <summary className="cursor-pointer text-sm font-medium text-primary">Storico delle assegnazioni</summary>
                   <ul className="mt-2 grid gap-1 text-xs text-muted-foreground">
@@ -262,6 +262,7 @@ export default async function PaginaCliente({ params, searchParams }: PageProps<
                       <li key={i}>
                         {a.nome}{a.referente ? ' (referente)' : ''}: dal {formattaData(a.dal)}{a.al ? ` al ${formattaData(a.al)}` : ' a oggi'}
                         {a.assegnato_da ? ` · assegnato da ${a.assegnato_da}` : ''}
+                        {a.rimosso_da ? ` · tolto da ${a.rimosso_da}` : ''}
                       </li>
                     ))}
                   </ul>

@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   if (!stessoSito(request)) return errore(403, 'Richiesta non consentita.')
 
   const sessione = await leggiSessione()
-  if (!sessione) return errore(401, 'Accesso richiesto.')
+  if (!sessione || sessione.serveSecondoPassaggio) return errore(401, 'Accesso richiesto.')
   if (!sessione.utente?.attivo || sessione.utente.ruolo !== 'admin') return errore(403, 'Solo gli admin possono importare i clienti.')
   if (!aiDisponibile()) return errore(503, "L'AI non è disponibile: usa «Riconosci le colonne dai nomi».")
 

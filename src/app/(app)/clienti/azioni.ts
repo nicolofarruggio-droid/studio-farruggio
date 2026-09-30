@@ -146,7 +146,10 @@ export async function creaCliente(_: unknown, fd: FormData): Promise<EsitoAzione
   let id: string
   try {
     id = await conUtente(persona, async (tx) => {
-      const usati = new Set((await tx<{ n: string }[]>`select lower(nome_visualizzazione) as n from public.clienti`).map((r) => r.n))
+      // il nome deve essere unico anche rispetto ai clienti nel cestino (l'indice unico li comprende)
+      const usati = new Set((await tx<{ n: string }[]>`
+        select lower(nome_visualizzazione) as n from public.clienti
+        union select lower(nome_visualizzazione) from public.clienti_nel_cestino()`).map((r) => r.n))
       const nome = nomeUnico(nomeVisualizzazione(d.data.ragione_sociale, d.data.titolari[0]), usati)
       const [c] = await tx<{ id: string }[]>`
         insert into public.clienti (studio_id, ragione_sociale, nome_visualizzazione, telefono, codice_fiscale, partita_iva,
@@ -198,6 +201,7 @@ export async function modificaCliente(id: string, _: unknown, fd: FormData): Pro
 }
 
 export async function impostaStatoCliente(id: string, stato: 'attivo' | 'archiviato'): Promise<EsitoAzione> {
+  if (!uuid.safeParse(id).success || !['attivo', 'archiviato'].includes(stato)) return { ok: false, errore: 'Dati non validi.' }
   const { persona } = await richiediAdmin()
   try {
     await conUtente(persona, async (tx) => {
@@ -215,6 +219,7 @@ export async function impostaStatoCliente(id: string, stato: 'attivo' | 'archivi
 // Collaboratori assegnati (solo admin)
 // ---------------------------------------------------------------------------
 export async function cambiaReferente(cliente: string, utente: string | null): Promise<EsitoAzione> {
+  if (!uuid.safeParse(cliente).success || (utente !== null && !uuid.safeParse(utente).success)) return { ok: false, errore: 'Dati non validi.' }
   const { persona } = await richiediAdmin()
   try {
     await conUtente(persona, (tx) => tx`select public.assegna_referente(${[cliente]}::uuid[], ${utente})`)
@@ -226,6 +231,7 @@ export async function cambiaReferente(cliente: string, utente: string | null): P
 }
 
 export async function impostaCollaboratoreAggiuntivo(cliente: string, utente: string, assegnato: boolean): Promise<EsitoAzione> {
+  if (!uuid.safeParse(cliente).success || !uuid.safeParse(utente).success) return { ok: false, errore: 'Dati non validi.' }
   const { persona } = await richiediAdmin()
   try {
     await conUtente(persona, (tx) => tx`select public.imposta_collaboratore_aggiuntivo(${cliente}, ${utente}, ${assegnato})`)
@@ -240,6 +246,7 @@ export async function impostaCollaboratoreAggiuntivo(cliente: string, utente: st
 // Indirizzi email collegati (admin e chi lavora sul cliente, sezione 16.1)
 // ---------------------------------------------------------------------------
 export async function aggiungiEmailCliente(cliente: string, _: unknown, fd: FormData): Promise<EsitoAzione> {
+  if (!uuid.safeParse(cliente).success) return { ok: false, errore: 'Cliente non valido.' }
   const { persona, studio } = await richiediUtente()
   const indirizzo = String(fd.get('indirizzo') ?? '').trim().toLowerCase()
   const tipo = fd.get('tipo') === 'pec' ? 'pec' : 'ordinaria'
@@ -265,6 +272,7 @@ export async function aggiungiEmailCliente(cliente: string, _: unknown, fd: Form
 }
 
 export async function rimuoviEmailCliente(cliente: string, indirizzo: string): Promise<EsitoAzione> {
+  if (!uuid.safeParse(cliente).success) return { ok: false, errore: 'Cliente non valido.' }
   const { persona } = await richiediUtente()
   try {
     const n = await conUtente(persona, async (tx) => (await tx`delete from public.clienti_email where cliente_id = ${cliente} and indirizzo = ${indirizzo}`).count)
@@ -279,9 +287,11 @@ export async function rimuoviEmailCliente(cliente: string, indirizzo: string): P
 // ---------------------------------------------------------------------------
 // Comunicazioni: inserimento manuale ed email incollata (sezione 16.1)
 // ---------------------------------------------------------------------------
+// DECISIONE APERTA (PIANO n. 7): le comunicazioni non si modificano né si eliminano (nessuna policy di update/delete).
 const CANALI = ['email', 'telefono', 'incontro', 'whatsapp', 'altro'] as const
 
 export async function aggiungiComunicazione(cliente: string, _: unknown, fd: FormData): Promise<EsitoAzione> {
+  if (!uuid.safeParse(cliente).success) return { ok: false, errore: 'Cliente non valido.' }
   const { persona, studio } = await richiediUtente()
   const d = z
     .object({
@@ -321,6 +331,7 @@ const schemaRiassuntoIncollato = z.object({
 
 /** L'AI propone data e riassunto di un'email incollata: niente viene salvato senza conferma. */
 export async function riassumiEmailIncollata(cliente: string, testo: string): Promise<EsitoAzione<z.infer<typeof schemaRiassuntoIncollato>>> {
+  if (!uuid.safeParse(cliente).success || typeof testo !== 'string') return { ok: false, errore: 'Dati non validi.' }
   const { persona } = await richiediUtente()
   const t = testo.trim()
   if (t.length < 20) return { ok: false, errore: 'Incolla il testo completo dell\'email.' }
@@ -362,6 +373,7 @@ Restituisci:
 // Cestino (solo admin)
 // ---------------------------------------------------------------------------
 export async function ripristinaCliente(id: string): Promise<EsitoAzione> {
+  if (!uuid.safeParse(id).success) return { ok: false, errore: 'Cliente non valido.' }
   const { persona } = await richiediAdmin()
   try {
     await conUtente(persona, (tx) => tx`select public.ripristina_cliente(${id})`)
@@ -373,6 +385,7 @@ export async function ripristinaCliente(id: string): Promise<EsitoAzione> {
 }
 
 export async function eliminaDefinitivamente(id: string): Promise<EsitoAzione> {
+  if (!uuid.safeParse(id).success) return { ok: false, errore: 'Cliente non valido.' }
   const { persona } = await richiediAdmin()
   try {
     const percorsi = await conUtente(persona, (tx) => tx<{ p: string }[]>`select public.elimina_cliente_definitivo(${id}) as p`)

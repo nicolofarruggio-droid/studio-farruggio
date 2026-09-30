@@ -30,7 +30,7 @@ export const DESCRIZIONI_AZIONI: Record<AzioneAgente, { etichetta: string; aiuto
   },
   carica_documenti: {
     etichetta: 'Caricare documenti',
-    aiuto: 'Carica file nei compiti aperti (dall\'API arriverà insieme allo spazio file).',
+    aiuto: 'Carica file nei compiti aperti di tutto lo studio, tramite l\'API. Per i file non c\'è la modalità proposta.',
     infinito: 'caricare documenti',
   },
 }

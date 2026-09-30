@@ -1,6 +1,7 @@
 // Controllo di una casella (sezione 16.3), senza dipendenze dirette da database, Gmail o AI:
 // ricevono tutto da fuori (Archivio, ClienteGmail, Riassumi), così la logica si prova con i test unitari.
 //
+// DECISIONE APERTA (PIANO n. 6): si leggono solo le email ricevute, non quelle inviate dal collaboratore ai clienti.
 // 1. nuovi messaggi SOLO in arrivo (INBOX) dopo il cursore; se il cursore è scaduto, ricerca "after:";
 // 2. di ogni messaggio si leggono PRIMA SOLO le intestazioni (mittente, data, oggetto, Message-ID);
 // 3. cliente riconosciuto SOLO con l'indirizzo esatto del mittente; altrimenti "ignorata": il testo non

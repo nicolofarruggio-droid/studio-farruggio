@@ -7,6 +7,9 @@ import { Intestazione } from '@/components/intestazione'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { VistaCollaboratore } from '@/components/dashboard/vista-collaboratore'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { elencoClienti } from '@/lib/dati/clienti'
+import { AssegnaClienti } from './assegna-clienti'
 
 export const metadata = { title: 'Vista collaboratore' }
 
@@ -31,6 +34,25 @@ export default async function PaginaVistaCollaboratore({ params }: PageProps<'/c
           <p>Stai vedendo la dashboard come la vede {c.nome}, in sola lettura. Per modificare, apri il cliente o il compito.</p>
         </Alert>
         {await VistaCollaboratore({ tx, utenteId: c.id, studio, sola_lettura: true })}
+        {c.attivo && (
+          <Card className="mt-6">
+            <CardHeader>
+              <div>
+                <CardTitle>Assegna clienti a {nomeCompleto(c)}</CardTitle>
+                <CardDescription>Diventa il referente dei clienti scelti; lo storico delle assegnazioni resta nella scheda del cliente.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <AssegnaClienti
+                collaboratore={c.id}
+                nome={c.nome}
+                clienti={(await elencoClienti(tx, {}))
+                  .filter((k) => k.referente_id !== c.id)
+                  .map((k) => ({ id: k.id, nome: k.nome_visualizzazione, referente: k.referente }))}
+              />
+            </CardContent>
+          </Card>
+        )}
       </>
     )
   })

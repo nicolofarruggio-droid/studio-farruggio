@@ -9,9 +9,13 @@ import { Campanella } from '@/components/shell/campanella'
 
 export default async function LayoutApp({ children }: { children: React.ReactNode }) {
   const { persona, utente, studio } = await richiediUtente()
-  const notifiche = await conUtente(persona, ultimeNotifiche)
+  const { notifiche, spazi } = await conUtente(persona, async (tx) => ({
+    notifiche: await ultimeNotifiche(tx),
+    spazi: (await tx<{ n: number }[]>`select count(*)::int as n from public.accessi_colleghi where utente_id = ${utente.id}`)[0].n,
+  }))
   const admin = utente.ruolo === 'admin'
-  const tuttoLoStudio = admin || studio.visibilita !== 'solo_propri'
+  // "I miei …" solo per chi vede soltanto il proprio spazio
+  const tuttoLoStudio = admin || studio.visibilita !== 'solo_propri' || spazi > 0
 
   const gruppi: GruppoMenu[] = [
     {

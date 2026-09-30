@@ -1,5 +1,5 @@
-import { timingSafeEqual } from 'node:crypto'
 import type { NextRequest } from 'next/server'
+import { cronAutorizzato } from '@/lib/cron/autorizza'
 import { eseguiControlliPianificati } from '@/lib/email-lettura/sincronizza'
 
 // Processo pianificato del controllo email (sezione 16.3). Vercel Cron lo chiama ogni 10 minuti con
@@ -8,16 +8,9 @@ import { eseguiControlliPianificati } from '@/lib/email-lettura/sincronizza'
 
 export const maxDuration = 300
 
-function autorizzato(request: NextRequest): boolean {
-  const segreto = process.env.CRON_SECRET
-  if (!segreto) return false
-  const atteso = Buffer.from(`Bearer ${segreto}`)
-  const dato = Buffer.from(request.headers.get('authorization') ?? '')
-  return atteso.length === dato.length && timingSafeEqual(atteso, dato)
-}
 
 export async function GET(request: NextRequest) {
-  if (!autorizzato(request)) return Response.json({ errore: 'Non autorizzato' }, { status: 401 })
+  if (!cronAutorizzato(request)) return Response.json({ errore: 'Non autorizzato' }, { status: 401 })
   const riepilogo = await eseguiControlliPianificati()
   return Response.json(riepilogo, { headers: { 'Cache-Control': 'no-store' } })
 }

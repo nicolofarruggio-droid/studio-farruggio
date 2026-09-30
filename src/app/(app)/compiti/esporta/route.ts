@@ -12,10 +12,14 @@ import { leggiParametri, ordinaCompiti } from '../_componenti/filtri-url'
 
 export async function GET(request: NextRequest) {
   const sessione = await leggiSessione()
-  if (!sessione?.utente?.attivo) return new Response('Accesso non consentito.', { status: 403 })
+  if (!sessione?.utente?.attivo || sessione.serveSecondoPassaggio) return new Response('Accesso non consentito.', { status: 403 })
   const parametri = leggiParametri(Object.fromEntries(request.nextUrl.searchParams))
   const compiti = ordinaCompiti(
-    await conUtente(sessione.persona, (tx) => elencoCompiti(tx, parametri.filtri, 5000)),
+    await conUtente(sessione.persona, async (tx) => {
+      const righe = await elencoCompiti(tx, parametri.filtri, 5000)
+      await tx`select public.registra_attivita('esportazione_compiti', 'compito', null, ${tx.json({ righe: righe.length })})`
+      return righe
+    }),
     parametri.ordina, parametri.verso,
   )
   const righe = compiti.map((k) => ({

@@ -15,6 +15,7 @@ export const AZIONI_REGISTRO_AGENTE = {
   compito_stato_cambiato: 'Stato di un compito cambiato',
   indicatore_aggiornato: 'Indicatore aggiornato',
   commento_aggiunto: 'Commento aggiunto',
+  documento_caricato: 'Documento caricato',
   proposta_creata: 'Proposta messa in coda',
 } as const
 export type AzioneRegistroAgente = keyof typeof AZIONI_REGISTRO_AGENTE
@@ -68,6 +69,8 @@ export function descriviVoceRegistro(azione: string, d: Record<string, unknown>)
         `da ${descriviValoreIndicatore(d.prima as Valore)} ${aOAd(descriviValoreIndicatore(d.dopo as Valore))}`
     case 'commento_aggiunto':
       return `Ha commentato il compito «${testo(d.titolo)}»: «${testo(d.estratto)}»`
+    case 'documento_caricato':
+      return `Ha caricato il documento «${testo(d.nome_file)}» in un compito`
     case 'proposta_creata': {
       const cosa = ETICHETTE_PROPOSTA[testo(d.azione) as AzioneProposta]
       return cosa ? `Ha proposto di ${cosa.charAt(0).toLowerCase()}${cosa.slice(1)} (da approvare)` : 'Ha messo in coda una proposta da approvare'
@@ -87,6 +90,7 @@ export function motivoNonAnnullabile(
 ): string | null {
   if (r.annullato_il) return `Già annullata il ${formattaData(r.annullato_il)}.`
   if (r.azione === 'commento_aggiunto') return 'I commenti non si eliminano: restano nella cronologia del compito. Se serve, aggiungi un commento di rettifica.'
+  if (r.azione === 'documento_caricato') return 'I documenti non si eliminano: restano nel compito.'
   if (r.azione === 'proposta_creata') return 'Le proposte si approvano o si rifiutano nella sezione "Proposte in attesa".'
   if (!r.annullabile) return 'Questa azione non ha cambiato nulla, oppure non si può annullare.'
   const giorni = (adesso.getTime() - new Date(r.creato_il).getTime()) / 86_400_000

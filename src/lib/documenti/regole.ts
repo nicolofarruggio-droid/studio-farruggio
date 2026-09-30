@@ -61,6 +61,8 @@ export const DESCRIZIONE_TIPI = 'PDF, Word, Excel, immagini, CSV, testo, ZIP e s
 /** Quanti file si caricano al massimo in una volta. */
 export const MAX_FILE_PER_VOLTA = 20
 
+// DECISIONE APERTA (PIANO n. 11): 25 MB per file proposti; nessun limite di spazio per studio per ora.
+// Se si supera 25 MB va alzato anche il limite del bucket (migrazione dello storage).
 export const MB_PREDEFINITI = 25
 
 /** Limite per file in byte, da DOCUMENTI_MAX_MB (proposta della sezione 8: 25 MB). */

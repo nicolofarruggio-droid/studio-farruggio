@@ -34,23 +34,30 @@ export default async function PaginaDashboard() {
   if (utente.ruolo !== 'admin') {
     return (
       <>
-        <Intestazione titolo={`Ciao, ${utente.nome}`} descrizione="Cosa è in ritardo e cosa scade oggi, a colpo d'occhio." />
-        <BannerEmail stato={casella} />
+        <Intestazione
+          titolo={`Ciao, ${utente.nome}`}
+          descrizione="Cosa è in ritardo e cosa scade oggi, a colpo d'occhio."
+          azioni={studio.creazione_compiti !== 'solo_admin' ? <Button asChild><Link href="/compiti/nuovo">Nuovo compito</Link></Button> : undefined}
+        />
+        {studio.lettura_email_attiva && <BannerEmail stato={casella} />}
         {await conUtente(persona, (tx) => VistaCollaboratore({ tx, utenteId: utente.id, studio }))}
       </>
     )
   }
 
-  const { collaboratori, ritardi, pronti, scaduti, aperti, clientiRitardo } = await conUtente(persona, async (tx) => {
-    const [collaboratori, ritardi, pronti, scaduti, aperti, clientiRitardo] = await Promise.all([
+  const { collaboratori, ritardi, pronti, scaduti, aperti, clientiRitardo, miei, assegnatiDaMe } = await conUtente(persona, async (tx) => {
+    const [collaboratori, ritardi, pronti, scaduti, aperti, clientiRitardo, miei, creati] = await Promise.all([
       statisticheCollaboratori(tx),
       contatoriRitardi(tx),
       elencoCompiti(tx, { stato: 'pronto_revisione' }),
       elencoCompiti(tx, { stato: 'aperti', scadenza: 'scaduti' }),
       tx<{ n: number }[]>`select count(*)::int as n from public.compiti where stato in ('assegnato', 'in_lavorazione', 'pronto_revisione')`,
       elencoClienti(tx, { ritardo: 'qualsiasi', ordina: 'iva', verso: 'asc' }),
+      elencoCompiti(tx, { stato: 'aperti', assegnatiA: utente.id }),
+      elencoCompiti(tx, { stato: 'aperti', creatiDa: utente.id }),
     ])
-    return { collaboratori, ritardi, pronti, scaduti, aperti: aperti[0].n, clientiRitardo }
+    const assegnatiDaMe = creati.filter((k) => !k.assegnatari.some((a) => a.id === utente.id))
+    return { collaboratori, ritardi, pronti, scaduti, aperti: aperti[0].n, clientiRitardo, miei, assegnatiDaMe }
   })
 
   return (
@@ -60,7 +67,7 @@ export default async function PaginaDashboard() {
         descrizione={`${studio.nome} · clienti indietro con IVA e prima nota, compiti scaduti e da controllare.`}
         azioni={<Button asChild><Link href="/compiti/nuovo">Nuovo compito</Link></Button>}
       />
-      <BannerEmail stato={casella} />
+      {studio.lettura_email_attiva && <BannerEmail stato={casella} />}
       <div className="grid gap-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Tessera titolo="Clienti in ritardo" valore={ritardi.clienti} dettaglio={`IVA ${ritardi.iva} · Prima nota ${ritardi.prima_nota} · su ${ritardi.totale}`} icona={AlertTriangle} tono="pericolo" href="/clienti?ritardo=qualsiasi" />
@@ -129,6 +136,34 @@ export default async function PaginaDashboard() {
             </Table>
           </CardContent>
         </Card>
+
+        {(miei.length > 0 || assegnatiDaMe.length > 0) && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {miei.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div>
+                    <CardTitle>I tuoi compiti</CardTitle>
+                    <CardDescription>Compiti aperti assegnati a te, ordinati per scadenza.</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0"><ElencoCompitiCompatto compiti={miei.slice(0, 8)} vuoto="" mostraAssegnatari={false} /></CardContent>
+              </Card>
+            )}
+            {assegnatiDaMe.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div>
+                    <CardTitle>Compiti che hai assegnato</CardTitle>
+                    <CardDescription>{assegnatiDaMe.length} aperti: li segui tu fino alla chiusura.</CardDescription>
+                  </div>
+                  <Button asChild variant="outline" size="sm"><Link href="/compiti">Tutti i compiti</Link></Button>
+                </CardHeader>
+                <CardContent className="pt-0"><ElencoCompitiCompatto compiti={assegnatiDaMe.slice(0, 8)} vuoto="" /></CardContent>
+              </Card>
+            )}
+          </div>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>

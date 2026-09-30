@@ -15,7 +15,7 @@ export type SchedaCliente = {
   indicatori: Record<'iva' | 'prima_nota', { aggiornato_fino_al: string | null; non_applicabile: boolean; aggiornato_il: Date; da: string | null } | null>
   storico: { id: string; tipo: 'iva' | 'prima_nota'; valore_precedente: string | null; valore_nuovo: string | null; na_precedente: boolean | null; na_nuovo: boolean | null; origine: string; da: string | null; da_agente: boolean; modificato_il: Date }[]
   assegnati: { utente_id: string; nome: string; referente: boolean; dal: Date }[]
-  storicoAssegnazioni: { nome: string; referente: boolean; dal: Date; al: Date | null; assegnato_da: string | null }[]
+  storicoAssegnazioni: { nome: string; referente: boolean; dal: Date; al: Date | null; assegnato_da: string | null; rimosso_da: string | null }[]
   comunicazioni: {
     id: string; data: Date; canale: string; testo: string; fonte: 'manuale' | 'email_automatica' | 'email_incollata'
     autore: string | null; mittente: string | null; oggetto: string | null; allegati: string[]; numero_messaggio: number | null
@@ -68,8 +68,9 @@ export async function leggiSchedaCliente(tx: Tx, id: string): Promise<SchedaClie
       where a.cliente_id = ${id} and a.al is null order by a.referente_principale desc, a.dal`,
     tx<SchedaCliente['storicoAssegnazioni']>`
       select trim(u.nome || ' ' || u.cognome) as nome, a.referente_principale as referente, a.dal, a.al,
-        trim(d.nome || ' ' || d.cognome) as assegnato_da
+        trim(d.nome || ' ' || d.cognome) as assegnato_da, trim(r.nome || ' ' || r.cognome) as rimosso_da
       from public.assegnazioni a join public.utenti u on u.id = a.utente_id left join public.utenti d on d.id = a.assegnato_da
+      left join public.utenti r on r.id = a.rimosso_da
       where a.cliente_id = ${id} order by a.dal desc limit 30`,
     tx<SchedaCliente['comunicazioni']>`
       select k.id, k.data, k.canale, k.testo, k.fonte, trim(u.nome || ' ' || u.cognome) as autore, k.mittente, k.oggetto,

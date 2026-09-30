@@ -17,9 +17,23 @@ export const MODELLO_AI = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5'
 // dollari per milione di token (ingresso, uscita) — listino API Anthropic, verificato il 30/09/2026
 const PREZZI: Record<string, [number, number]> = {
   'claude-sonnet-5-5': [2, 10],
+  'claude-sonnet-5': [2, 10],
   'claude-opus-5-5': [4, 20],
+  'claude-opus-5': [5, 25],
+  'claude-opus-4-8': [5, 25],
+  'claude-fable-5-1': [10, 50],
   'claude-haiku-4-5': [1, 5],
 }
+
+/**
+ * Modello di riserva in caso di rifiuto dei filtri di sicurezza (raro per email e fogli di clienti):
+ * l'API ripete la richiesta su un altro modello scelto da Anthropic. DECISIONE APERTA: le specifiche chiedono
+ * Sonnet 5.5 per tutto; con AI_MODELLO_RISERVA=no la riserva si spegne e il rifiuto viene mostrato all'utente.
+ */
+const riserva = () =>
+  process.env.AI_MODELLO_RISERVA === 'no'
+    ? {}
+    : { betas: ['server-side-fallback-2026-07-01'] as string[], fallbacks: 'default' as const }
 
 export type FunzioneAI = 'importazione' | 'riassunto_email' | 'riassunto_incollato'
 /** Per conto di chi si registra la chiamata: un utente (interfaccia) o uno studio (processi del server). */
@@ -50,7 +64,8 @@ function claude(): Anthropic {
 }
 
 export function costoStimato(modello: string, ingresso: number, uscita: number): number {
-  const [pi, po] = PREZZI[modello] ?? PREZZI['claude-sonnet-5-5']
+  // modello sconosciuto: si stima con il listino più alto, per non sottostimare i costi
+  const [pi, po] = PREZZI[modello] ?? PREZZI['claude-fable-5-1']
   return (ingresso * pi + uscita * po) / 1_000_000
 }
 
@@ -109,9 +124,7 @@ export async function jsonDaClaude<S extends z.ZodType>(o: OpzioniJson<S>): Prom
       system: `${REGOLE_COMUNI}\n\n${o.istruzioni}`,
       messages: [{ role: 'user', content: `<dati>\n${o.dati}\n</dati>` }],
       output_config: { format: betaZodOutputFormat(o.schema), effort: o.effort ?? 'low' },
-      // in caso di rifiuto dei filtri di sicurezza, l'API riprova sul modello di riserva
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
+      ...riserva(),
     })
     ingresso = risposta.usage.input_tokens
     uscita = risposta.usage.output_tokens
@@ -159,8 +172,7 @@ export async function* flussoJsonDaClaude<S extends z.ZodType>(
       system: `${REGOLE_COMUNI}\n\n${o.istruzioni}`,
       messages: [{ role: 'user', content: `<dati>\n${o.dati}\n</dati>` }],
       output_config: { format: betaZodOutputFormat(o.schema), effort: o.effort ?? 'low' },
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
+      ...riserva(),
     },
     { signal: o.segnale },
   )
