@@ -62,6 +62,8 @@ secondo studio: `paola.bianchi@bianchi-demo.it` e colleghi. Email di prova: Mail
   Dopo le modifiche `revalidatePath(...)`.
 - Moduli client con `useActionState` + `PulsanteInvio` + `MessaggioEsito`; campi con `Campo` (etichetta, aiuto,
   errore collegati con aria).
+- postgres.js: i valori jsonb si passano con `tx.json(oggetto)` (con `JSON.stringify(...)::jsonb` verrebbero salvati come
+  stringa); gli elenchi JSON come parametro testuale `$1::text::json`. I test su PGlite non vedono questa differenza.
 - Date: salvate in UTC, mostrate in `Europe/Rome` con `src/lib/date.ts`. Le date senza ora sono stringhe `AAAA-MM-GG`.
 - Accessibilità e agenti (sezione 13.1): ogni azione ha un pulsante o link con testo chiaro; niente azioni solo
   al passaggio del mouse o col trascinamento; stato mai solo col colore (icona + testo); URL stabili
